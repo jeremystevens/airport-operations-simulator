@@ -62,8 +62,36 @@ class Aircraft:
         self.passengers = int(passengers)
         self.cargo_kg = float(cargo_kg)
 
+        self.route = []
+        self.route_index = 0
+
+        self.pushback_target = None
+        self.pushback_speed = 0.0
+
     def assign_gate(self, gate):
         self.assigned_gate = gate
+
+    def assign_route(self, route):
+        self.route = list(route)
+        self.route_index = 0
+
+    def clear_route(self):
+        self.route = []
+        self.route_index = 0
+
+    @property
+    def has_route(self):
+        return (
+            bool(self.route)
+            and self.route_index < len(self.route)
+        )
+
+    @property
+    def current_route_node(self):
+        if not self.has_route:
+            return None
+
+        return self.route[self.route_index]
 
     def set_state(self, state):
         if not isinstance(state, AircraftState):

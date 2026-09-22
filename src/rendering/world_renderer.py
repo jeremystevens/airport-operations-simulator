@@ -2,8 +2,14 @@ import pygame
 
 from src.rendering.aircraft_renderer import AircraftRenderer
 from src.rendering.facility_renderer import FacilityRenderer
+from src.rendering.ground_vehicle_renderer import (
+    GroundVehicleRenderer,
+)
 from src.rendering.runway_renderer import RunwayRenderer
 from src.rendering.taxiway_renderer import TaxiwayRenderer
+from src.vehicles.ground_vehicle import (
+    GroundVehicleState,
+)
 
 
 class WorldRenderer:
@@ -14,6 +20,7 @@ class WorldRenderer:
         self.runway_renderer = RunwayRenderer()
         self.taxiway_renderer = TaxiwayRenderer()
         self.aircraft_renderer = AircraftRenderer()
+        self.ground_vehicle_renderer = GroundVehicleRenderer()
 
     def draw(self, screen, camera, airport):
         """Render the simulation world."""
@@ -45,6 +52,37 @@ class WorldRenderer:
                 screen,
                 camera,
                 aircraft,
+            )
+
+        for vehicle in airport.ground_vehicles:
+
+            if (
+                vehicle.state
+                == GroundVehicleState.PUSHING
+                and vehicle.assigned_aircraft_id
+            ):
+                aircraft = next(
+                    (
+                        aircraft
+                        for aircraft in airport.aircraft
+                        if aircraft.flight_id
+                        == vehicle.assigned_aircraft_id
+                    ),
+                    None,
+                )
+
+                if aircraft is not None:
+                    self.ground_vehicle_renderer.draw_towbar(
+                        screen,
+                        camera,
+                        vehicle,
+                        aircraft,
+                    )
+
+            self.ground_vehicle_renderer.draw(
+                screen,
+                camera,
+                vehicle,
             )
 
         self._draw_debug_grid(screen, camera, airport)

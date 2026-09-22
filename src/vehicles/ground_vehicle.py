@@ -1,0 +1,60 @@
+from enum import Enum
+
+import pygame
+
+
+class GroundVehicleType(Enum):
+    PUSHBACK_TUG = "pushback_tug"
+    BAGGAGE_TRACTOR = "baggage_tractor"
+    FUEL_TRUCK = "fuel_truck"
+    CATERING_TRUCK = "catering_truck"
+    SERVICE_VAN = "service_van"
+
+
+class GroundVehicleState(Enum):
+    PARKED = "parked"
+    DISPATCHED = "dispatched"
+    CONNECTED = "connected"
+    PUSHING = "pushing"
+    RETURNING = "returning"
+
+
+class GroundVehicle:
+    def __init__(
+        self,
+        vehicle_id,
+        vehicle_type,
+        position=(0.0, 0.0),
+        heading=0.0,
+    ):
+        self.vehicle_id = vehicle_id
+        self.vehicle_type = vehicle_type
+        self.position = pygame.Vector2(position)
+        self.heading = float(heading)
+        self.speed = 0.0
+
+        self.active = False
+        self.assigned_aircraft_id = None
+
+        self.state = GroundVehicleState.PARKED
+        self.home_position = pygame.Vector2(position)
+
+    def assign_aircraft(self, aircraft):
+        self.assigned_aircraft_id = (
+            aircraft.flight_id
+        )
+
+    def clear_assignment(self):
+        self.assigned_aircraft_id = None
+
+    def __repr__(self):
+        return (
+            f"GroundVehicle("
+            f"id='{self.vehicle_id}', "
+            f"type='{self.vehicle_type.value}', "
+            f"position={tuple(self.position)}, "
+            f"heading={self.heading}, "
+            f"active={self.active}, "
+            f"aircraft='{self.assigned_aircraft_id}'"
+            f")"
+        )

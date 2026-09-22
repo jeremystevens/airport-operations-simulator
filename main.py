@@ -1,3 +1,5 @@
+import math
+
 import pygame
 
 from src.aircraft.aircraft import (
@@ -14,12 +16,44 @@ from src.airport.taxiway import TaxiwayNode, TaxiwaySegment
 from src.airport.terminal import Terminal
 from src.rendering.camera import Camera
 from src.rendering.world_renderer import WorldRenderer
+from src.simulation.aircraft_movement import (
+    AircraftMovementController,
+)
 from src.simulation.clock import SimulationClock
+from src.simulation.ground_vehicle_movement import (
+    GroundVehicleMovementController,
+)
+from src.simulation.pathfinding import find_taxiway_path
+from src.simulation.pushback import PushbackController
+from src.vehicles.ground_vehicle import (
+    GroundVehicle,
+    GroundVehicleState,
+    GroundVehicleType,
+)
 
 
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
+
+
+def get_tug_connect_position(
+    aircraft,
+    offset=215.0,
+):
+    heading_radians = math.radians(
+        aircraft.heading
+    )
+
+    forward = pygame.Vector2(
+        math.sin(heading_radians),
+        -math.cos(heading_radians),
+    )
+
+    return (
+        pygame.Vector2(aircraft.position)
+        + forward * offset
+    )
 
 
 def main():
@@ -34,6 +68,18 @@ def main():
     world_renderer = WorldRenderer()
 
     simulation_clock = SimulationClock(6, 0)
+
+    aircraft_movement = AircraftMovementController(
+        taxi_speed=90.0
+    )
+
+    pushback_controller = PushbackController(
+        pushback_speed=35.0
+    )
+
+    ground_vehicle_movement = (
+        GroundVehicleMovementController()
+    )
 
     airport = Airport(
         name="Redwood International Airport",
@@ -216,6 +262,15 @@ def main():
 
     airport.add_aircraft(rw428)
 
+    tug_01 = GroundVehicle(
+        vehicle_id="TUG-01",
+        vehicle_type=GroundVehicleType.PUSHBACK_TUG,
+        position=(-850, 1200),
+        heading=180,
+    )
+
+    airport.add_ground_vehicle(tug_01)
+
     rw901 = Aircraft(
         flight_id="RW901",
         aircraft_type="Aero 350",
@@ -356,6 +411,10 @@ def main():
     for segment in gate_connections:
         airport.add_taxiway_segment(segment)
 
+    tug_01.assign_aircraft(rw428)
+    tug_01.active = True
+    tug_01.state = GroundVehicleState.DISPATCHED
+
     terminal_1_apron = Apron(
         apron_id="T1_APRON",
         name="Terminal 1 Apron",
@@ -383,6 +442,88 @@ def main():
         camera.update(dt)
 
         simulation_clock.update(dt)
+
+        if tug_01.state == GroundVehicleState.DISPATCHED:
+            connect_position = get_tug_connect_position(
+                rw428
+            )
+
+            arrived = ground_vehicle_movement.move_toward(
+                tug_01,
+                connect_position,
+                dt,
+            )
+
+            if arrived:
+                tug_01.state = (
+                    GroundVehicleState.CONNECTED
+                )
+
+                pushback_controller.start(
+                    rw428,
+                    terminal_1_gates[0],
+                    airport.taxiway_nodes["GATE_A1"],
+                    tug_01,
+                )
+
+                tug_01.state = (
+                    GroundVehicleState.PUSHING
+                )
+
+        if tug_01.state == GroundVehicleState.PUSHING:
+            pushback_complete = (
+                pushback_controller.update(
+                    rw428,
+                    airport,
+                    tug_01,
+                    dt,
+                )
+            )
+
+            if pushback_complete:
+                terminal_1_gates[0].release()
+
+                tug_01.speed = 0.0
+                tug_01.clear_assignment()
+                tug_01.state = (
+                    GroundVehicleState.RETURNING
+                )
+
+                rw428_departure_route = (
+                    find_taxiway_path(
+                        airport,
+                        "GATE_A1",
+                        "RWY_A1",
+                    )
+                )
+
+                rw428.assign_route(
+                    rw428_departure_route
+                )
+
+                rw428.set_state(
+                    AircraftState.TAXI_OUT
+                )
+
+        if tug_01.state == GroundVehicleState.RETURNING:
+            returned = ground_vehicle_movement.move_toward(
+                tug_01,
+                tug_01.home_position,
+                dt,
+            )
+
+            if returned:
+                tug_01.state = (
+                    GroundVehicleState.PARKED
+                )
+
+                tug_01.active = False
+
+        aircraft_movement.update(
+            rw428,
+            airport,
+            dt,
+        )
 
         screen.fill((20, 24, 28))
 
