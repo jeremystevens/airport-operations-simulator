@@ -10,6 +10,7 @@ class AircraftState(Enum):
     SERVICING = "servicing"
     PUSHBACK = "pushback"
     TAXI_OUT = "taxi_out"
+    HOLD_SHORT = "hold_short"
     TAKEOFF = "takeoff"
     DEPARTED = "departed"
 
@@ -64,6 +65,7 @@ class Aircraft:
 
         self.route = []
         self.route_index = 0
+        self.route_destination = None
 
         self.pushback_target = None
         self.pushback_speed = 0.0
@@ -71,13 +73,19 @@ class Aircraft:
     def assign_gate(self, gate):
         self.assigned_gate = gate
 
-    def assign_route(self, route):
+    def assign_route(
+        self,
+        route,
+        destination=None,
+    ):
         self.route = list(route)
         self.route_index = 0
+        self.route_destination = destination
 
     def clear_route(self):
         self.route = []
         self.route_index = 0
+        self.route_destination = None
 
     @property
     def has_route(self):

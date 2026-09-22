@@ -24,6 +24,9 @@ from src.simulation.aircraft_movement import (
     AircraftMovementController,
 )
 from src.simulation.clock import SimulationClock
+from src.simulation.command_executor import (
+    CommandExecutor,
+)
 from src.simulation.ground_vehicle_movement import (
     GroundVehicleMovementController,
 )
@@ -31,6 +34,9 @@ from src.simulation.pathfinding import find_taxiway_path
 from src.simulation.pushback import PushbackController
 from src.simulation.service_pathfinding import (
     find_service_path,
+)
+from src.simulation.tower_controller import (
+    TowerController,
 )
 from src.vehicles.ground_vehicle import (
     GroundVehicle,
@@ -87,6 +93,11 @@ def main():
     ground_vehicle_movement = (
         GroundVehicleMovementController()
     )
+
+    tower_controller = TowerController()
+    command_executor = CommandExecutor()
+
+    tower_clearance_timer = 0.0
 
     airport = Airport(
         name="Redwood International Airport",
@@ -181,10 +192,23 @@ def main():
     for segment in alpha_segments:
         airport.add_taxiway_segment(segment)
 
+    hold_09 = TaxiwayNode(
+        "HOLD_09",
+        (-2350, 260),
+    )
+
+    airport.add_taxiway_node(hold_09)
+
     runway_connectors = [
         TaxiwaySegment(
-            "A1_RWY",
+            "A1_HOLD09",
             alpha_1,
+            hold_09,
+            "A1",
+        ),
+        TaxiwaySegment(
+            "HOLD09_RWY",
+            hold_09,
             runway_a1,
             "A1",
         ),
@@ -636,12 +660,13 @@ def main():
                     find_taxiway_path(
                         airport,
                         "GATE_A1",
-                        "RWY_A1",
+                        "HOLD_09",
                     )
                 )
 
                 rw428.assign_route(
-                    rw428_departure_route
+                    rw428_departure_route,
+                    destination="HOLD_09",
                 )
 
                 rw428.set_state(
@@ -695,6 +720,43 @@ def main():
             airport,
             dt,
         )
+
+        if (
+            rw428.state == AircraftState.TAXI_OUT
+            and not rw428.has_route
+            and rw428.route_destination == "HOLD_09"
+        ):
+            rw428.speed = 0.0
+
+            rw428.set_state(
+                AircraftState.HOLD_SHORT
+            )
+
+            rw428.route = []
+            rw428.route_index = 0
+            rw428.route_destination = None
+
+        if rw428.state == AircraftState.HOLD_SHORT:
+            tower_clearance_timer += dt
+
+            if tower_clearance_timer >= 5.0:
+                command = (
+                    tower_controller.evaluate_runway_entry(
+                        rw428,
+                        runway_09_27,
+                        "HOLD_09",
+                        "RWY_A1",
+                    )
+                )
+
+                if command is not None:
+                    executed = command_executor.execute(
+                        command,
+                        airport,
+                    )
+
+                    if executed:
+                        tower_clearance_timer = 0.0
 
         screen.fill((20, 24, 28))
 
