@@ -26,8 +26,13 @@ class Airport:
 
         self.aprons = []
 
+        self.aircraft = []
+
     def add_runway(self, runway):
         self.runways.append(runway)
+
+    def add_aircraft(self, aircraft):
+        self.aircraft.append(aircraft)
 
     def add_taxiway_node(self, node):
         self.taxiway_nodes[node.node_id] = node

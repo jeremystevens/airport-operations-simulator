@@ -1,5 +1,6 @@
 import pygame
 
+from src.rendering.aircraft_renderer import AircraftRenderer
 from src.rendering.facility_renderer import FacilityRenderer
 from src.rendering.runway_renderer import RunwayRenderer
 from src.rendering.taxiway_renderer import TaxiwayRenderer
@@ -12,6 +13,7 @@ class WorldRenderer:
         self.facility_renderer = FacilityRenderer()
         self.runway_renderer = RunwayRenderer()
         self.taxiway_renderer = TaxiwayRenderer()
+        self.aircraft_renderer = AircraftRenderer()
 
     def draw(self, screen, camera, airport):
         """Render the simulation world."""
@@ -37,6 +39,13 @@ class WorldRenderer:
             camera,
             airport,
         )
+
+        for aircraft in airport.aircraft:
+            self.aircraft_renderer.draw(
+                screen,
+                camera,
+                aircraft,
+            )
 
         self._draw_debug_grid(screen, camera, airport)
         self._draw_world_origin(screen, camera)

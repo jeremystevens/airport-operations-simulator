@@ -1,5 +1,11 @@
 import pygame
 
+from src.aircraft.aircraft import (
+    Aircraft,
+    AircraftOperation,
+    AircraftSize,
+    AircraftState,
+)
 from src.airport.airport import Airport
 from src.airport.runway import Runway
 from src.airport.apron import Apron
@@ -167,30 +173,66 @@ def main():
             "A1",
             "T1",
             (-750, 1150),
-            max_aircraft_size="narrowbody",
+            max_aircraft_size=AircraftSize.NARROWBODY,
         ),
         Gate(
             "A2",
             "T1",
             (-250, 1150),
-            max_aircraft_size="widebody",
+            max_aircraft_size=AircraftSize.WIDEBODY,
         ),
         Gate(
             "A3",
             "T1",
             (250, 1150),
-            max_aircraft_size="widebody",
+            max_aircraft_size=AircraftSize.WIDEBODY,
         ),
         Gate(
             "A4",
             "T1",
             (750, 1150),
-            max_aircraft_size="narrowbody",
+            max_aircraft_size=AircraftSize.NARROWBODY,
         ),
     ]
 
     for gate in terminal_1_gates:
         terminal_1.add_gate(gate)
+
+    rw428 = Aircraft(
+        flight_id="RW428",
+        aircraft_type="Aero 320",
+        size=AircraftSize.NARROWBODY,
+        operation=AircraftOperation.PASSENGER,
+        position=(-750, 1150),
+        heading=180,
+        passenger_capacity=186,
+        passengers=164,
+    )
+
+    rw428.assign_gate(terminal_1_gates[0])
+    rw428.set_state(AircraftState.AT_GATE)
+
+    terminal_1_gates[0].occupy(rw428)
+
+    airport.add_aircraft(rw428)
+
+    rw901 = Aircraft(
+        flight_id="RW901",
+        aircraft_type="Aero 350",
+        size=AircraftSize.WIDEBODY,
+        operation=AircraftOperation.PASSENGER,
+        position=(250, 1150),
+        heading=180,
+        passenger_capacity=325,
+        passengers=287,
+    )
+
+    rw901.assign_gate(terminal_1_gates[2])
+    rw901.set_state(AircraftState.AT_GATE)
+
+    terminal_1_gates[2].occupy(rw901)
+
+    airport.add_aircraft(rw901)
 
     apron_center = TaxiwayNode(
         "APRON_CENTER",
