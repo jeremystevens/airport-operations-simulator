@@ -1,6 +1,7 @@
 import pygame
 
 from src.rendering.runway_renderer import RunwayRenderer
+from src.rendering.taxiway_renderer import TaxiwayRenderer
 
 
 class WorldRenderer:
@@ -8,6 +9,7 @@ class WorldRenderer:
         self.grid_spacing = 200
         self.grid_extent = 2000
         self.runway_renderer = RunwayRenderer()
+        self.taxiway_renderer = TaxiwayRenderer()
 
     def draw(self, screen, camera, airport):
         """Render the simulation world."""
@@ -21,6 +23,12 @@ class WorldRenderer:
                 camera,
                 runway,
             )
+
+        self.taxiway_renderer.draw(
+            screen,
+            camera,
+            airport,
+        )
 
         self._draw_debug_grid(screen, camera, airport)
         self._draw_world_origin(screen, camera)

@@ -2,6 +2,7 @@ import pygame
 
 from src.airport.airport import Airport
 from src.airport.runway import Runway
+from src.airport.taxiway import TaxiwayNode, TaxiwaySegment
 from src.rendering.camera import Camera
 from src.rendering.world_renderer import WorldRenderer
 from src.simulation.clock import SimulationClock
@@ -43,6 +44,102 @@ def main():
     )
 
     airport.add_runway(runway_09_27)
+
+    alpha_west = TaxiwayNode("A_WEST", (-2500, 500))
+    alpha_1 = TaxiwayNode("A1", (-2350, 500))
+    alpha_2 = TaxiwayNode("A2", (-900, 500))
+    alpha_3 = TaxiwayNode("A3", (900, 500))
+    alpha_4 = TaxiwayNode("A4", (2350, 500))
+    alpha_east = TaxiwayNode("A_EAST", (2500, 500))
+
+    for node in (
+        alpha_west,
+        alpha_1,
+        alpha_2,
+        alpha_3,
+        alpha_4,
+        alpha_east,
+    ):
+        airport.add_taxiway_node(node)
+
+    runway_a1 = TaxiwayNode("RWY_A1", (-2350, 90))
+    runway_a2 = TaxiwayNode("RWY_A2", (-700, 90))
+    runway_a3 = TaxiwayNode("RWY_A3", (700, 90))
+    runway_a4 = TaxiwayNode("RWY_A4", (2350, 90))
+
+    for node in (
+        runway_a1,
+        runway_a2,
+        runway_a3,
+        runway_a4,
+    ):
+        airport.add_taxiway_node(node)
+
+    alpha_segments = [
+        TaxiwaySegment(
+            "A_01",
+            alpha_west,
+            alpha_1,
+            "A",
+        ),
+        TaxiwaySegment(
+            "A_02",
+            alpha_1,
+            alpha_2,
+            "A",
+        ),
+        TaxiwaySegment(
+            "A_03",
+            alpha_2,
+            alpha_3,
+            "A",
+        ),
+        TaxiwaySegment(
+            "A_04",
+            alpha_3,
+            alpha_4,
+            "A",
+        ),
+        TaxiwaySegment(
+            "A_05",
+            alpha_4,
+            alpha_east,
+            "A",
+        ),
+    ]
+
+    for segment in alpha_segments:
+        airport.add_taxiway_segment(segment)
+
+    runway_connectors = [
+        TaxiwaySegment(
+            "A1_RWY",
+            alpha_1,
+            runway_a1,
+            "A1",
+        ),
+        TaxiwaySegment(
+            "A2_RWY",
+            alpha_2,
+            runway_a2,
+            "A2",
+        ),
+        TaxiwaySegment(
+            "A3_RWY",
+            alpha_3,
+            runway_a3,
+            "A3",
+        ),
+        TaxiwaySegment(
+            "A4_RWY",
+            alpha_4,
+            runway_a4,
+            "A4",
+        ),
+    ]
+
+    for segment in runway_connectors:
+        airport.add_taxiway_segment(segment)
 
     font = pygame.font.Font(None, 28)
 

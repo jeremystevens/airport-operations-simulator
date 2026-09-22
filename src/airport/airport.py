@@ -19,8 +19,17 @@ class Airport:
 
         self.runways = []
 
+        self.taxiway_nodes = {}
+        self.taxiway_segments = []
+
     def add_runway(self, runway):
         self.runways.append(runway)
+
+    def add_taxiway_node(self, node):
+        self.taxiway_nodes[node.node_id] = node
+
+    def add_taxiway_segment(self, segment):
+        self.taxiway_segments.append(segment)
 
     def __repr__(self):
         return (
