@@ -8,7 +8,7 @@ class Camera:
 
         self.position = pygame.Vector2(0, 0)
         self.zoom = 1.0
-        self.min_zoom = 0.25
+        self.min_zoom = 0.1
         self.max_zoom = 4.0
         self.zoom_step = 0.15
 

@@ -1,6 +1,7 @@
 import pygame
 
 from src.airport.airport import Airport
+from src.airport.runway import Runway
 from src.rendering.camera import Camera
 from src.rendering.world_renderer import WorldRenderer
 from src.simulation.clock import SimulationClock
@@ -29,7 +30,19 @@ def main():
         code="RWI",
         world_width=12000,
         world_height=8000,
+        property_width=7000,
+        property_height=4500,
     )
+
+    runway_09_27 = Runway(
+        name="09/27",
+        center=(0, 0),
+        length=5200,
+        width=180,
+        heading=90,
+    )
+
+    airport.add_runway(runway_09_27)
 
     font = pygame.font.Font(None, 28)
 
@@ -50,7 +63,7 @@ def main():
 
         screen.fill((20, 24, 28))
 
-        world_renderer.draw(screen, camera)
+        world_renderer.draw(screen, camera, airport)
 
         airport_text = font.render(
             f"{airport.code} - {airport.name.upper()}",
