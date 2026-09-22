@@ -6,6 +6,9 @@ from src.rendering.ground_vehicle_renderer import (
     GroundVehicleRenderer,
 )
 from src.rendering.runway_renderer import RunwayRenderer
+from src.rendering.service_road_renderer import (
+    ServiceRoadRenderer,
+)
 from src.rendering.taxiway_renderer import TaxiwayRenderer
 from src.vehicles.ground_vehicle import (
     GroundVehicleState,
@@ -19,6 +22,7 @@ class WorldRenderer:
         self.facility_renderer = FacilityRenderer()
         self.runway_renderer = RunwayRenderer()
         self.taxiway_renderer = TaxiwayRenderer()
+        self.service_road_renderer = ServiceRoadRenderer()
         self.aircraft_renderer = AircraftRenderer()
         self.ground_vehicle_renderer = GroundVehicleRenderer()
 
@@ -29,6 +33,12 @@ class WorldRenderer:
         self._draw_airport_property(screen, camera, airport)
 
         self.facility_renderer.draw(
+            screen,
+            camera,
+            airport,
+        )
+
+        self.service_road_renderer.draw(
             screen,
             camera,
             airport,

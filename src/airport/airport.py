@@ -30,6 +30,9 @@ class Airport:
 
         self.ground_vehicles = []
 
+        self.service_nodes = {}
+        self.service_segments = []
+
     def add_runway(self, runway):
         self.runways.append(runway)
 
@@ -50,6 +53,12 @@ class Airport:
 
     def add_apron(self, apron):
         self.aprons.append(apron)
+
+    def add_service_node(self, node):
+        self.service_nodes[node.node_id] = node
+
+    def add_service_segment(self, segment):
+        self.service_segments.append(segment)
 
     def __repr__(self):
         return (

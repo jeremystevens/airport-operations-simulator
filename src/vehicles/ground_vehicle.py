@@ -39,6 +39,11 @@ class GroundVehicle:
         self.state = GroundVehicleState.PARKED
         self.home_position = pygame.Vector2(position)
 
+        self.route = []
+        self.route_index = 0
+
+        self.final_target = None
+
     def assign_aircraft(self, aircraft):
         self.assigned_aircraft_id = (
             aircraft.flight_id
@@ -46,6 +51,28 @@ class GroundVehicle:
 
     def clear_assignment(self):
         self.assigned_aircraft_id = None
+
+    def assign_route(self, route):
+        self.route = list(route)
+        self.route_index = 0
+
+    def clear_route(self):
+        self.route = []
+        self.route_index = 0
+
+    @property
+    def has_route(self):
+        return (
+            bool(self.route)
+            and self.route_index < len(self.route)
+        )
+
+    @property
+    def current_route_node(self):
+        if not self.has_route:
+            return None
+
+        return self.route[self.route_index]
 
     def __repr__(self):
         return (

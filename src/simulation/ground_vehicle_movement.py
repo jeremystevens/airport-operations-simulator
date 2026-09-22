@@ -65,6 +65,38 @@ class GroundVehicleMovementController:
 
         return False
 
+    def update_route(
+        self,
+        vehicle,
+        airport,
+        dt,
+    ):
+        if not vehicle.has_route:
+            vehicle.speed = 0.0
+            return False
+
+        node_id = vehicle.current_route_node
+        target_node = airport.service_nodes[
+            node_id
+        ]
+
+        arrived = self.move_toward(
+            vehicle,
+            target_node.position,
+            dt,
+        )
+
+        if not arrived:
+            return False
+
+        vehicle.route_index += 1
+
+        if vehicle.route_index >= len(vehicle.route):
+            vehicle.speed = 0.0
+            return True
+
+        return False
+
     @staticmethod
     def _turn_toward(
         current,

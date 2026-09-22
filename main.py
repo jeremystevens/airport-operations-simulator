@@ -12,6 +12,10 @@ from src.airport.airport import Airport
 from src.airport.runway import Runway
 from src.airport.apron import Apron
 from src.airport.gate import Gate
+from src.airport.service_road import (
+    ServiceNode,
+    ServiceSegment,
+)
 from src.airport.taxiway import TaxiwayNode, TaxiwaySegment
 from src.airport.terminal import Terminal
 from src.rendering.camera import Camera
@@ -25,6 +29,9 @@ from src.simulation.ground_vehicle_movement import (
 )
 from src.simulation.pathfinding import find_taxiway_path
 from src.simulation.pushback import PushbackController
+from src.simulation.service_pathfinding import (
+    find_service_path,
+)
 from src.vehicles.ground_vehicle import (
     GroundVehicle,
     GroundVehicleState,
@@ -411,10 +418,6 @@ def main():
     for segment in gate_connections:
         airport.add_taxiway_segment(segment)
 
-    tug_01.assign_aircraft(rw428)
-    tug_01.active = True
-    tug_01.state = GroundVehicleState.DISPATCHED
-
     terminal_1_apron = Apron(
         apron_id="T1_APRON",
         name="Terminal 1 Apron",
@@ -425,6 +428,125 @@ def main():
     )
 
     airport.add_apron(terminal_1_apron)
+
+    service_west = ServiceNode(
+        "SERVICE_WEST",
+        (-1050, 1225),
+    )
+
+    service_a1 = ServiceNode(
+        "SERVICE_A1",
+        (-850, 1225),
+    )
+
+    service_a2 = ServiceNode(
+        "SERVICE_A2",
+        (-350, 1225),
+    )
+
+    service_a3 = ServiceNode(
+        "SERVICE_A3",
+        (350, 1225),
+    )
+
+    service_a4 = ServiceNode(
+        "SERVICE_A4",
+        (850, 1225),
+    )
+
+    service_east = ServiceNode(
+        "SERVICE_EAST",
+        (1050, 1225),
+    )
+
+    for node in (
+        service_west,
+        service_a1,
+        service_a2,
+        service_a3,
+        service_a4,
+        service_east,
+    ):
+        airport.add_service_node(node)
+
+    service_segments = [
+        ServiceSegment(
+            "SERVICE_01",
+            service_west,
+            service_a1,
+        ),
+        ServiceSegment(
+            "SERVICE_02",
+            service_a1,
+            service_a2,
+        ),
+        ServiceSegment(
+            "SERVICE_03",
+            service_a2,
+            service_a3,
+        ),
+        ServiceSegment(
+            "SERVICE_04",
+            service_a3,
+            service_a4,
+        ),
+        ServiceSegment(
+            "SERVICE_05",
+            service_a4,
+            service_east,
+        ),
+    ]
+
+    for segment in service_segments:
+        airport.add_service_segment(segment)
+
+    tug_a1_home = ServiceNode(
+        "TUG_A1_HOME",
+        (-850, 1200),
+    )
+
+    tug_a1_connect = ServiceNode(
+        "TUG_A1_CONNECT",
+        (-750, 1225),
+    )
+
+    for node in (
+        tug_a1_home,
+        tug_a1_connect,
+    ):
+        airport.add_service_node(node)
+
+    airport.add_service_segment(
+        ServiceSegment(
+            "TUG_A1_HOME_SPUR",
+            service_a1,
+            tug_a1_home,
+        )
+    )
+
+    airport.add_service_segment(
+        ServiceSegment(
+            "TUG_A1_CONNECT_SPUR",
+            service_a1,
+            tug_a1_connect,
+        )
+    )
+
+    dispatch_route = find_service_path(
+        airport,
+        "TUG_A1_HOME",
+        "TUG_A1_CONNECT",
+    )
+
+    tug_01.assign_route(
+        dispatch_route
+    )
+
+    tug_01.assign_aircraft(rw428)
+    tug_01.active = True
+    tug_01.state = (
+        GroundVehicleState.DISPATCHED
+    )
 
     font = pygame.font.Font(None, 28)
 
@@ -444,31 +566,45 @@ def main():
         simulation_clock.update(dt)
 
         if tug_01.state == GroundVehicleState.DISPATCHED:
-            connect_position = get_tug_connect_position(
-                rw428
-            )
 
-            arrived = ground_vehicle_movement.move_toward(
-                tug_01,
-                connect_position,
-                dt,
-            )
-
-            if arrived:
-                tug_01.state = (
-                    GroundVehicleState.CONNECTED
+            if tug_01.has_route:
+                route_complete = (
+                    ground_vehicle_movement.update_route(
+                        tug_01,
+                        airport,
+                        dt,
+                    )
                 )
 
-                pushback_controller.start(
-                    rw428,
-                    terminal_1_gates[0],
-                    airport.taxiway_nodes["GATE_A1"],
-                    tug_01,
+                if route_complete:
+                    tug_01.final_target = (
+                        get_tug_connect_position(
+                            rw428
+                        )
+                    )
+
+            elif tug_01.final_target is not None:
+                connected = (
+                    ground_vehicle_movement.move_toward(
+                        tug_01,
+                        tug_01.final_target,
+                        dt,
+                    )
                 )
 
-                tug_01.state = (
-                    GroundVehicleState.PUSHING
-                )
+                if connected:
+                    tug_01.final_target = None
+
+                    pushback_controller.start(
+                        rw428,
+                        terminal_1_gates[0],
+                        airport.taxiway_nodes["GATE_A1"],
+                        tug_01,
+                    )
+
+                    tug_01.state = (
+                        GroundVehicleState.PUSHING
+                    )
 
         if tug_01.state == GroundVehicleState.PUSHING:
             pushback_complete = (
@@ -483,8 +619,15 @@ def main():
             if pushback_complete:
                 terminal_1_gates[0].release()
 
-                tug_01.speed = 0.0
                 tug_01.clear_assignment()
+                tug_01.clear_route()
+
+                tug_01.final_target = (
+                    airport.service_nodes[
+                        "TUG_A1_CONNECT"
+                    ].position
+                )
+
                 tug_01.state = (
                     GroundVehicleState.RETURNING
                 )
@@ -506,18 +649,46 @@ def main():
                 )
 
         if tug_01.state == GroundVehicleState.RETURNING:
-            returned = ground_vehicle_movement.move_toward(
-                tug_01,
-                tug_01.home_position,
-                dt,
-            )
 
-            if returned:
-                tug_01.state = (
-                    GroundVehicleState.PARKED
+            if tug_01.final_target is not None:
+                reached_service_lane = (
+                    ground_vehicle_movement.move_toward(
+                        tug_01,
+                        tug_01.final_target,
+                        dt,
+                    )
                 )
 
-                tug_01.active = False
+                if reached_service_lane:
+                    tug_01.final_target = None
+
+                    return_route = (
+                        find_service_path(
+                            airport,
+                            "TUG_A1_CONNECT",
+                            "TUG_A1_HOME",
+                        )
+                    )
+
+                    tug_01.assign_route(
+                        return_route
+                    )
+
+            elif tug_01.has_route:
+                returned = (
+                    ground_vehicle_movement.update_route(
+                        tug_01,
+                        airport,
+                        dt,
+                    )
+                )
+
+                if returned:
+                    tug_01.state = (
+                        GroundVehicleState.PARKED
+                    )
+
+                    tug_01.active = False
 
         aircraft_movement.update(
             rw428,
