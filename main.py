@@ -1,54 +1,14 @@
 import pygame
 
+from src.airport.airport import Airport
 from src.rendering.camera import Camera
+from src.rendering.world_renderer import WorldRenderer
 from src.simulation.clock import SimulationClock
 
 
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
-
-
-def draw_test_world(screen, camera):
-    """Temporary world objects used to test camera movement."""
-
-    # World origin
-    origin = camera.world_to_screen((0, 0))
-
-    pygame.draw.circle(
-        screen,
-        (255, 80, 80),
-        (int(origin.x), int(origin.y)),
-        12,
-    )
-
-    # Temporary world grid
-    grid_spacing = 200
-    grid_extent = 2000
-
-    for x in range(-grid_extent, grid_extent + 1, grid_spacing):
-        start = camera.world_to_screen((x, -grid_extent))
-        end = camera.world_to_screen((x, grid_extent))
-
-        pygame.draw.line(
-            screen,
-            (45, 50, 55),
-            start,
-            end,
-            1,
-        )
-
-    for y in range(-grid_extent, grid_extent + 1, grid_spacing):
-        start = camera.world_to_screen((-grid_extent, y))
-        end = camera.world_to_screen((grid_extent, y))
-
-        pygame.draw.line(
-            screen,
-            (45, 50, 55),
-            start,
-            end,
-            1,
-        )
 
 
 def main():
@@ -60,8 +20,16 @@ def main():
     clock = pygame.time.Clock()
 
     camera = Camera(WIDTH, HEIGHT)
+    world_renderer = WorldRenderer()
 
     simulation_clock = SimulationClock(6, 0)
+
+    airport = Airport(
+        name="Redwood International Airport",
+        code="RWI",
+        world_width=12000,
+        world_height=8000,
+    )
 
     font = pygame.font.Font(None, 28)
 
@@ -82,15 +50,22 @@ def main():
 
         screen.fill((20, 24, 28))
 
-        draw_test_world(screen, camera)
+        world_renderer.draw(screen, camera)
 
-        time_text = font.render(
-            f"DAY {simulation_clock.day}  |  {simulation_clock.get_time_string()}",
+        airport_text = font.render(
+            f"{airport.code} - {airport.name.upper()}",
             True,
             (220, 225, 230),
         )
 
-        screen.blit(time_text, (20, 20))
+        time_text = font.render(
+            f"DAY {simulation_clock.day}  |  {simulation_clock.get_time_string()}",
+            True,
+            (180, 190, 200),
+        )
+
+        screen.blit(airport_text, (20, 20))
+        screen.blit(time_text, (20, 50))
 
         pygame.display.flip()
 
