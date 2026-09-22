@@ -1,5 +1,6 @@
 import pygame
 
+from src.rendering.facility_renderer import FacilityRenderer
 from src.rendering.runway_renderer import RunwayRenderer
 from src.rendering.taxiway_renderer import TaxiwayRenderer
 
@@ -8,6 +9,7 @@ class WorldRenderer:
     def __init__(self):
         self.grid_spacing = 200
         self.grid_extent = 2000
+        self.facility_renderer = FacilityRenderer()
         self.runway_renderer = RunwayRenderer()
         self.taxiway_renderer = TaxiwayRenderer()
 
@@ -16,6 +18,12 @@ class WorldRenderer:
 
         self._draw_world_background(screen, camera, airport)
         self._draw_airport_property(screen, camera, airport)
+
+        self.facility_renderer.draw(
+            screen,
+            camera,
+            airport,
+        )
 
         for runway in airport.runways:
             self.runway_renderer.draw(

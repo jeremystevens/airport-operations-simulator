@@ -2,7 +2,10 @@ import pygame
 
 from src.airport.airport import Airport
 from src.airport.runway import Runway
+from src.airport.apron import Apron
+from src.airport.gate import Gate
 from src.airport.taxiway import TaxiwayNode, TaxiwaySegment
+from src.airport.terminal import Terminal
 from src.rendering.camera import Camera
 from src.rendering.world_renderer import WorldRenderer
 from src.simulation.clock import SimulationClock
@@ -48,6 +51,7 @@ def main():
     alpha_west = TaxiwayNode("A_WEST", (-2500, 500))
     alpha_1 = TaxiwayNode("A1", (-2350, 500))
     alpha_2 = TaxiwayNode("A2", (-900, 500))
+    alpha_center = TaxiwayNode("A_CENTER", (0, 500))
     alpha_3 = TaxiwayNode("A3", (900, 500))
     alpha_4 = TaxiwayNode("A4", (2350, 500))
     alpha_east = TaxiwayNode("A_EAST", (2500, 500))
@@ -56,6 +60,7 @@ def main():
         alpha_west,
         alpha_1,
         alpha_2,
+        alpha_center,
         alpha_3,
         alpha_4,
         alpha_east,
@@ -91,6 +96,12 @@ def main():
         TaxiwaySegment(
             "A_03",
             alpha_2,
+            alpha_center,
+            "A",
+        ),
+        TaxiwaySegment(
+            "A_03B",
+            alpha_center,
             alpha_3,
             "A",
         ),
@@ -140,6 +151,179 @@ def main():
 
     for segment in runway_connectors:
         airport.add_taxiway_segment(segment)
+
+    terminal_1 = Terminal(
+        terminal_id="T1",
+        name="Terminal 1",
+        center=(0, 1500),
+        width=2200,
+        height=500,
+    )
+
+    airport.add_terminal(terminal_1)
+
+    terminal_1_gates = [
+        Gate(
+            "A1",
+            "T1",
+            (-750, 1150),
+            max_aircraft_size="narrowbody",
+        ),
+        Gate(
+            "A2",
+            "T1",
+            (-250, 1150),
+            max_aircraft_size="widebody",
+        ),
+        Gate(
+            "A3",
+            "T1",
+            (250, 1150),
+            max_aircraft_size="widebody",
+        ),
+        Gate(
+            "A4",
+            "T1",
+            (750, 1150),
+            max_aircraft_size="narrowbody",
+        ),
+    ]
+
+    for gate in terminal_1_gates:
+        terminal_1.add_gate(gate)
+
+    apron_center = TaxiwayNode(
+        "APRON_CENTER",
+        (0, 800),
+    )
+
+    gate_a1_node = TaxiwayNode(
+        "GATE_A1",
+        (-750, 850),
+    )
+
+    gate_a2_node = TaxiwayNode(
+        "GATE_A2",
+        (-250, 850),
+    )
+
+    gate_a3_node = TaxiwayNode(
+        "GATE_A3",
+        (250, 850),
+    )
+
+    gate_a4_node = TaxiwayNode(
+        "GATE_A4",
+        (750, 850),
+    )
+
+    for node in (
+        apron_center,
+        gate_a1_node,
+        gate_a2_node,
+        gate_a3_node,
+        gate_a4_node,
+    ):
+        airport.add_taxiway_node(node)
+
+    airport.add_taxiway_segment(
+        TaxiwaySegment(
+            "APRON_ENTRY",
+            alpha_center,
+            apron_center,
+            "APRON",
+            width=60,
+        )
+    )
+
+    apron_segments = [
+        TaxiwaySegment(
+            "APRON_A1_A2",
+            gate_a1_node,
+            gate_a2_node,
+            "APRON",
+            width=60,
+        ),
+        TaxiwaySegment(
+            "APRON_A2_CENTER",
+            gate_a2_node,
+            apron_center,
+            "APRON",
+            width=60,
+        ),
+        TaxiwaySegment(
+            "APRON_CENTER_A3",
+            apron_center,
+            gate_a3_node,
+            "APRON",
+            width=60,
+        ),
+        TaxiwaySegment(
+            "APRON_A3_A4",
+            gate_a3_node,
+            gate_a4_node,
+            "APRON",
+            width=60,
+        ),
+    ]
+
+    for segment in apron_segments:
+        airport.add_taxiway_segment(segment)
+
+    gate_stop_nodes = [
+        TaxiwayNode("A1_STOP", (-750, 1150)),
+        TaxiwayNode("A2_STOP", (-250, 1150)),
+        TaxiwayNode("A3_STOP", (250, 1150)),
+        TaxiwayNode("A4_STOP", (750, 1150)),
+    ]
+
+    for node in gate_stop_nodes:
+        airport.add_taxiway_node(node)
+
+    gate_connections = [
+        TaxiwaySegment(
+            "GATE_A1_LEAD",
+            gate_a1_node,
+            gate_stop_nodes[0],
+            "GATE",
+            width=40,
+        ),
+        TaxiwaySegment(
+            "GATE_A2_LEAD",
+            gate_a2_node,
+            gate_stop_nodes[1],
+            "GATE",
+            width=40,
+        ),
+        TaxiwaySegment(
+            "GATE_A3_LEAD",
+            gate_a3_node,
+            gate_stop_nodes[2],
+            "GATE",
+            width=40,
+        ),
+        TaxiwaySegment(
+            "GATE_A4_LEAD",
+            gate_a4_node,
+            gate_stop_nodes[3],
+            "GATE",
+            width=40,
+        ),
+    ]
+
+    for segment in gate_connections:
+        airport.add_taxiway_segment(segment)
+
+    terminal_1_apron = Apron(
+        apron_id="T1_APRON",
+        name="Terminal 1 Apron",
+        center=(0, 1050),
+        width=2800,
+        height=1000,
+        apron_type="passenger",
+    )
+
+    airport.add_apron(terminal_1_apron)
 
     font = pygame.font.Font(None, 28)
 
