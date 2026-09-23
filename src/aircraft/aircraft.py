@@ -13,6 +13,7 @@ class AircraftState(Enum):
     HOLD_SHORT = "hold_short"
     LINE_UP = "line_up"
     TAKEOFF = "takeoff"
+    AIRBORNE = "airborne"
     DEPARTED = "departed"
 
 
@@ -56,6 +57,7 @@ class Aircraft:
 
         self.heading = float(heading)
         self.speed = 0.0
+        self.altitude = 0.0
 
         self.state = AircraftState.AT_GATE
         self.assigned_gate = None

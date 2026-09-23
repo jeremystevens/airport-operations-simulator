@@ -26,6 +26,11 @@ class HUD:
             simulation_clock,
         )
 
+        self._draw_sim_speed(
+            screen,
+            simulation_clock,
+        )
+
         self._draw_zoom(
             screen,
             camera,
@@ -51,6 +56,29 @@ class HUD:
 
         screen.blit(airport_text, (20, 20))
         screen.blit(time_text, (20, 50))
+
+    def _draw_sim_speed(
+        self,
+        screen,
+        simulation_clock,
+    ):
+        speed_text = self.small_font.render(
+            f"SIM {simulation_clock.time_scale:g}x",
+            True,
+            (220, 220, 210),
+        )
+
+        rect = speed_text.get_rect(
+            bottomright=(
+                screen.get_width() - 12,
+                screen.get_height() - 12 - 22,
+            )
+        )
+
+        screen.blit(
+            speed_text,
+            rect,
+        )
 
     def _draw_zoom(
         self,

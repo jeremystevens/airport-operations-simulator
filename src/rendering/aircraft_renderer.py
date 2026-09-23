@@ -1,6 +1,6 @@
 import pygame
 
-from src.aircraft.aircraft import AircraftSize
+from src.aircraft.aircraft import AircraftSize, AircraftState
 
 
 class AircraftRenderer:
@@ -62,6 +62,9 @@ class AircraftRenderer:
     }
 
     def draw(self, screen, camera, aircraft):
+        if aircraft.state == AircraftState.DEPARTED:
+            return
+
         profile = self.AIRCRAFT_PROFILES[
             aircraft.size
         ]

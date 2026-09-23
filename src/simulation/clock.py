@@ -10,6 +10,40 @@ class SimulationClock:
         self.accumulator = 0.0
         self.paused = False
 
+        self.time_scale = 1.0
+
+    def increase_speed(self):
+        speeds = [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0,
+            8.0,
+            16.0,
+        ]
+
+        for speed in speeds:
+            if speed > self.time_scale:
+                self.time_scale = speed
+                return
+
+    def decrease_speed(self):
+        speeds = [
+            16.0,
+            8.0,
+            4.0,
+            2.0,
+            1.0,
+            0.5,
+            0.25,
+        ]
+
+        for speed in speeds:
+            if speed < self.time_scale:
+                self.time_scale = speed
+                return
+
     def update(self, dt):
         if self.paused:
             return

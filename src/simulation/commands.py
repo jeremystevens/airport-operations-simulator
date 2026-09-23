@@ -9,3 +9,10 @@ class LineUpAndWaitClearance:
     runway_entry_node_id: str
     lineup_node_id: str
     runway_heading: float
+
+
+@dataclass(frozen=True)
+class TakeoffClearance:
+    aircraft_id: str
+    runway_name: str
+    runway_heading: float

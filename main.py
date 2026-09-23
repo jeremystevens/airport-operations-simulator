@@ -35,6 +35,12 @@ from src.simulation.pushback import PushbackController
 from src.simulation.service_pathfinding import (
     find_service_path,
 )
+from src.simulation.airborne_movement import (
+    AirborneMovementController,
+)
+from src.simulation.takeoff import (
+    TakeoffController,
+)
 from src.simulation.tower_controller import (
     TowerController,
 )
@@ -101,8 +107,13 @@ def main():
 
     tower_controller = TowerController()
     command_executor = CommandExecutor()
+    takeoff_controller = TakeoffController()
+    airborne_movement_controller = (
+        AirborneMovementController()
+    )
 
     tower_clearance_timer = 0.0
+    takeoff_clearance_timer = 0.0
 
     airport = Airport(
         name="Redwood International Airport",
@@ -599,17 +610,29 @@ def main():
     running = True
 
     while running:
-        dt = clock.tick(FPS) / 1000.0
+        real_dt = clock.tick(FPS) / 1000.0
+
+        sim_dt = (
+            real_dt
+            * simulation_clock.time_scale
+        )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RIGHTBRACKET:
+                    simulation_clock.increase_speed()
+
+                elif event.key == pygame.K_LEFTBRACKET:
+                    simulation_clock.decrease_speed()
+
             camera.handle_event(event)
 
-        camera.update(dt)
+        camera.update(real_dt)
 
-        simulation_clock.update(dt)
+        simulation_clock.update(sim_dt)
 
         if tug_01.state == GroundVehicleState.DISPATCHED:
 
@@ -618,7 +641,7 @@ def main():
                     ground_vehicle_movement.update_route(
                         tug_01,
                         airport,
-                        dt,
+                        sim_dt,
                     )
                 )
 
@@ -634,7 +657,7 @@ def main():
                     ground_vehicle_movement.move_toward(
                         tug_01,
                         tug_01.final_target,
-                        dt,
+                        sim_dt,
                     )
                 )
 
@@ -658,7 +681,7 @@ def main():
                     rw428,
                     airport,
                     tug_01,
-                    dt,
+                    sim_dt,
                 )
             )
 
@@ -702,7 +725,7 @@ def main():
                     ground_vehicle_movement.move_toward(
                         tug_01,
                         tug_01.final_target,
-                        dt,
+                        sim_dt,
                     )
                 )
 
@@ -726,7 +749,7 @@ def main():
                     ground_vehicle_movement.update_route(
                         tug_01,
                         airport,
-                        dt,
+                        sim_dt,
                     )
                 )
 
@@ -737,11 +760,15 @@ def main():
 
                     tug_01.active = False
 
-        aircraft_movement.update(
-            rw428,
-            airport,
-            dt,
-        )
+        if rw428.state not in (
+            AircraftState.TAKEOFF,
+            AircraftState.AIRBORNE,
+        ):
+            aircraft_movement.update(
+                rw428,
+                airport,
+                sim_dt,
+            )
 
         if (
             rw428.state == AircraftState.TAXI_OUT
@@ -771,7 +798,7 @@ def main():
             rw428.route_destination = None
 
         if rw428.state == AircraftState.HOLD_SHORT:
-            tower_clearance_timer += dt
+            tower_clearance_timer += sim_dt
 
             if tower_clearance_timer >= 5.0:
                 command = (
@@ -791,6 +818,73 @@ def main():
 
                     if executed:
                         tower_clearance_timer = 0.0
+
+        if (
+            rw428.state == AircraftState.LINE_UP
+            and not rw428.has_route
+        ):
+            takeoff_clearance_timer += sim_dt
+
+            if takeoff_clearance_timer >= 5.0:
+                command = (
+                    tower_controller.evaluate_takeoff(
+                        rw428,
+                        runway_09_27,
+                        90.0,
+                    )
+                )
+
+                if command is not None:
+                    executed = (
+                        command_executor.execute(
+                            command,
+                            airport,
+                        )
+                    )
+
+                    if executed:
+                        print(
+                            f"[TOWER] {rw428.flight_id} CLEARED FOR TAKEOFF | "
+                            f"runway={runway_09_27.name} | "
+                            f"heading={rw428.heading:.0f}"
+                        )
+
+                        takeoff_clearance_timer = 0.0
+
+        liftoff = takeoff_controller.update(
+            rw428,
+            sim_dt,
+        )
+
+        if liftoff:
+            runway_09_27.occupied = False
+
+            print(
+                f"[TAKEOFF] {rw428.flight_id} LIFTOFF | "
+                f"state={rw428.state.value} | "
+                f"speed={rw428.speed:.1f} | "
+                f"altitude={rw428.altitude:.1f} | "
+                f"position=({rw428.position[0]:.1f}, "
+                f"{rw428.position[1]:.1f}) | "
+                f"runway={runway_09_27.name} RELEASED"
+            )
+
+        departed = (
+            airborne_movement_controller.update(
+                rw428,
+                airport,
+                sim_dt,
+            )
+        )
+
+        if departed:
+            print(
+                f"[DEPARTURE] {rw428.flight_id} DEPARTED | "
+                f"state={rw428.state.value} | "
+                f"altitude={rw428.altitude:.0f} | "
+                f"position=({rw428.position[0]:.1f}, "
+                f"{rw428.position[1]:.1f})"
+            )
 
         screen.fill((20, 24, 28))
 
