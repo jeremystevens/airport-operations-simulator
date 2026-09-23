@@ -38,6 +38,7 @@ from src.simulation.service_pathfinding import (
 from src.simulation.tower_controller import (
     TowerController,
 )
+from src.ui.hud import HUD
 from src.vehicles.ground_vehicle import (
     GroundVehicle,
     GroundVehicleState,
@@ -52,7 +53,7 @@ FPS = 60
 
 def get_tug_connect_position(
     aircraft,
-    offset=215.0,
+    offset=235.0,
 ):
     heading_radians = math.radians(
         aircraft.heading
@@ -77,7 +78,11 @@ def main():
 
     clock = pygame.time.Clock()
 
-    camera = Camera(WIDTH, HEIGHT)
+    camera = Camera(
+        WIDTH,
+        HEIGHT,
+        initial_zoom=0.19,
+    )
     world_renderer = WorldRenderer()
 
     simulation_clock = SimulationClock(6, 0)
@@ -235,12 +240,29 @@ def main():
     for segment in runway_connectors:
         airport.add_taxiway_segment(segment)
 
+    lineup_09 = TaxiwayNode(
+        "LINEUP_09",
+        (-2150, 0),
+    )
+
+    airport.add_taxiway_node(lineup_09)
+
+    airport.add_taxiway_segment(
+        TaxiwaySegment(
+            "RWY_A1_LINEUP09",
+            runway_a1,
+            lineup_09,
+            "RWY 09 LINEUP",
+            render_surface=False,
+        )
+    )
+
     terminal_1 = Terminal(
         terminal_id="T1",
         name="Terminal 1",
-        center=(0, 1500),
+        center=(0, 1750),
         width=2200,
-        height=500,
+        height=400,
     )
 
     airport.add_terminal(terminal_1)
@@ -531,7 +553,7 @@ def main():
 
     tug_a1_connect = ServiceNode(
         "TUG_A1_CONNECT",
-        (-750, 1225),
+        (-800, 1225),
     )
 
     for node in (
@@ -572,7 +594,7 @@ def main():
         GroundVehicleState.DISPATCHED
     )
 
-    font = pygame.font.Font(None, 28)
+    hud = HUD()
 
     running = True
 
@@ -736,12 +758,24 @@ def main():
             rw428.route_index = 0
             rw428.route_destination = None
 
+        if (
+            rw428.state == AircraftState.LINE_UP
+            and not rw428.has_route
+            and rw428.route_destination == "LINEUP_09"
+        ):
+            rw428.speed = 0.0
+            rw428.heading = 90.0
+
+            rw428.route = []
+            rw428.route_index = 0
+            rw428.route_destination = None
+
         if rw428.state == AircraftState.HOLD_SHORT:
             tower_clearance_timer += dt
 
             if tower_clearance_timer >= 5.0:
                 command = (
-                    tower_controller.evaluate_runway_entry(
+                    tower_controller.evaluate_line_up(
                         rw428,
                         runway_09_27,
                         "HOLD_09",
@@ -762,20 +796,12 @@ def main():
 
         world_renderer.draw(screen, camera, airport)
 
-        airport_text = font.render(
-            f"{airport.code} - {airport.name.upper()}",
-            True,
-            (220, 225, 230),
+        hud.draw(
+            screen,
+            airport,
+            simulation_clock,
+            camera,
         )
-
-        time_text = font.render(
-            f"DAY {simulation_clock.day}  |  {simulation_clock.get_time_string()}",
-            True,
-            (180, 190, 200),
-        )
-
-        screen.blit(airport_text, (20, 20))
-        screen.blit(time_text, (20, 50))
 
         pygame.display.flip()
 

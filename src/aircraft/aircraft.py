@@ -11,6 +11,7 @@ class AircraftState(Enum):
     PUSHBACK = "pushback"
     TAXI_OUT = "taxi_out"
     HOLD_SHORT = "hold_short"
+    LINE_UP = "line_up"
     TAKEOFF = "takeoff"
     DEPARTED = "departed"
 

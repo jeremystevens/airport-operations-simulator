@@ -12,12 +12,24 @@ class FacilityRenderer:
     GATE_LABEL = (235, 235, 230)
     GATE_STOP = (220, 215, 195)
 
+    GATE_BRIDGE = (185, 190, 185)
+    GATE_BRIDGE_EDGE = (105, 110, 105)
+
     def draw(self, screen, camera, airport):
         for apron in airport.aprons:
             self._draw_apron(screen, camera, apron)
 
         for terminal in airport.terminals:
             self._draw_terminal(screen, camera, terminal)
+
+        for terminal in airport.terminals:
+            for gate in terminal.gates:
+                self._draw_gate_bridge(
+                    screen,
+                    camera,
+                    terminal,
+                    gate,
+                )
 
         for terminal in airport.terminals:
             for gate in terminal.gates:
@@ -85,6 +97,99 @@ class FacilityRenderer:
             self.TERMINAL_EDGE,
             rect,
             max(1, int(3 * camera.zoom)),
+        )
+
+    def _draw_gate_bridge(
+        self,
+        screen,
+        camera,
+        terminal,
+        gate,
+    ):
+        """Draw a straight jet-bridge connector on the screen-left side of
+        the aircraft, from the terminal facade to the forward fuselage."""
+
+        terminal_front_y = (
+            terminal.center.y
+            - terminal.height / 2
+        )
+
+        bridge_x = gate.position.x + 105
+
+        bridge_terminal = pygame.Vector2(
+            bridge_x,
+            terminal_front_y,
+        )
+
+        bridge_aircraft = pygame.Vector2(
+            bridge_x,
+            gate.position.y + 45,
+        )
+
+        terminal_screen = camera.world_to_screen(
+            bridge_terminal
+        )
+
+        aircraft_screen = camera.world_to_screen(
+            bridge_aircraft
+        )
+
+        bridge_width = max(
+            4,
+            int(32 * camera.zoom),
+        )
+
+        # Darker outline first.
+        pygame.draw.line(
+            screen,
+            self.GATE_BRIDGE_EDGE,
+            terminal_screen,
+            aircraft_screen,
+            bridge_width + 2,
+        )
+
+        # Lighter bridge body.
+        pygame.draw.line(
+            screen,
+            self.GATE_BRIDGE,
+            terminal_screen,
+            aircraft_screen,
+            bridge_width,
+        )
+
+        # Terminal attachment box.
+        box_size = max(
+            6,
+            int(55 * camera.zoom),
+        )
+
+        box_rect = pygame.Rect(
+            0,
+            0,
+            box_size,
+            box_size,
+        )
+
+        box_rect.center = (
+            int(terminal_screen.x),
+            int(terminal_screen.y),
+        )
+
+        pygame.draw.rect(
+            screen,
+            self.GATE_BRIDGE_EDGE,
+            box_rect,
+        )
+
+        inner_rect = box_rect.inflate(
+            -max(2, int(6 * camera.zoom)),
+            -max(2, int(6 * camera.zoom)),
+        )
+
+        pygame.draw.rect(
+            screen,
+            self.GATE_BRIDGE,
+            inner_rect,
         )
 
     def _draw_gate(self, screen, camera, gate):

@@ -1,5 +1,7 @@
 from src.aircraft.aircraft import AircraftState
-from src.simulation.commands import RunwayEntryClearance
+from src.simulation.commands import (
+    LineUpAndWaitClearance,
+)
 from src.simulation.pathfinding import find_taxiway_path
 
 
@@ -11,9 +13,9 @@ class CommandExecutor:
     ):
         if isinstance(
             command,
-            RunwayEntryClearance,
+            LineUpAndWaitClearance,
         ):
-            return self._execute_runway_entry(
+            return self._execute_line_up(
                 command,
                 airport,
             )
@@ -22,7 +24,7 @@ class CommandExecutor:
             f"Unsupported command: {type(command).__name__}"
         )
 
-    def _execute_runway_entry(
+    def _execute_line_up(
         self,
         command,
         airport,
@@ -69,7 +71,7 @@ class CommandExecutor:
         route = find_taxiway_path(
             airport,
             command.hold_node_id,
-            command.runway_entry_node_id,
+            command.lineup_node_id,
         )
 
         if not route:
@@ -79,11 +81,11 @@ class CommandExecutor:
 
         aircraft.assign_route(
             route,
-            destination=command.runway_entry_node_id,
+            destination=command.lineup_node_id,
         )
 
         aircraft.set_state(
-            AircraftState.RUNWAY
+            AircraftState.LINE_UP
         )
 
         return True

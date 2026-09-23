@@ -1,12 +1,14 @@
 from src.aircraft.aircraft import AircraftState
-from src.simulation.commands import RunwayEntryClearance
+from src.simulation.commands import (
+    LineUpAndWaitClearance,
+)
 
 
 class TowerController:
     def __init__(self):
         self.enabled = True
 
-    def evaluate_runway_entry(
+    def evaluate_line_up(
         self,
         aircraft,
         runway,
@@ -22,9 +24,11 @@ class TowerController:
         if runway.occupied:
             return None
 
-        return RunwayEntryClearance(
+        return LineUpAndWaitClearance(
             aircraft_id=aircraft.flight_id,
             runway_name=runway.name,
             hold_node_id=hold_node_id,
             runway_entry_node_id=runway_entry_node_id,
+            lineup_node_id="LINEUP_09",
+            runway_heading=90.0,
         )

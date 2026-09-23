@@ -23,6 +23,9 @@ class TaxiwayRenderer:
         )
 
     def _draw_segment(self, screen, camera, segment):
+        if not segment.render_surface:
+            return
+
         start = camera.world_to_screen(
             segment.start_node.position
         )

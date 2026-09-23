@@ -2,14 +2,19 @@ import pygame
 
 
 class Camera:
-    def __init__(self, screen_width, screen_height):
+    def __init__(
+        self,
+        screen_width,
+        screen_height,
+        initial_zoom=0.19,
+    ):
         self.screen_width = screen_width
         self.screen_height = screen_height
 
         self.position = pygame.Vector2(0, 0)
-        self.zoom = 1.0
-        self.min_zoom = 0.1
-        self.max_zoom = 4.0
+        self.zoom = initial_zoom
+        self.min_zoom = 0.10
+        self.max_zoom = 4.00
         self.zoom_step = 0.15
 
         self.move_speed = 600.0

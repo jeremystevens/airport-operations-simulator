@@ -23,6 +23,7 @@ class TaxiwaySegment:
         end_node,
         name,
         width=70,
+        render_surface=True,
     ):
         self.segment_id = segment_id
 
@@ -31,6 +32,7 @@ class TaxiwaySegment:
 
         self.name = name
         self.width = width
+        self.render_surface = render_surface
 
         self.occupied = False
 

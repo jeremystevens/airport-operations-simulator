@@ -116,7 +116,7 @@ class PushbackController:
             -math.cos(heading_radians),
         )
 
-        tug_offset = 215.0
+        tug_offset = 235.0
 
         tug.position = (
             aircraft_position
