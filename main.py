@@ -59,6 +59,9 @@ from src.simulation.takeoff import (
 from src.simulation.tower_controller import (
     TowerController,
 )
+from src.simulation.turnaround import (
+    TurnaroundController,
+)
 from src.ui.hud import HUD
 from src.vehicles.ground_vehicle import (
     GroundVehicle,
@@ -140,6 +143,7 @@ def main():
             command_executor,
         )
     )
+    turnaround_controller = TurnaroundController()
 
     tower_clearance_timer = 0.0
     takeoff_clearance_timer = 0.0
@@ -1193,8 +1197,45 @@ def main():
                     f"state={rw215.state.value}"
                 )
 
+                if turnaround_controller.start(rw215):
+                    print(
+                        f"[TURNAROUND] {rw215.flight_id} "
+                        f"DEBOARDING STARTED | "
+                        f"gate={rw215.assigned_gate.gate_id}"
+                    )
+
             else:
                 rw215.speed = 0.0
+
+        turnaround_event = turnaround_controller.update(
+            rw215,
+            sim_dt,
+        )
+
+        if turnaround_event == "unloading":
+            print(
+                f"[TURNAROUND] {rw215.flight_id} "
+                f"UNLOADING STARTED"
+            )
+
+        elif turnaround_event == "servicing":
+            print(
+                f"[TURNAROUND] {rw215.flight_id} "
+                f"SERVICING STARTED"
+            )
+
+        elif turnaround_event == "boarding":
+            print(
+                f"[TURNAROUND] {rw215.flight_id} "
+                f"BOARDING STARTED"
+            )
+
+        elif turnaround_event == "ready_for_pushback":
+            print(
+                f"[TURNAROUND] {rw215.flight_id} "
+                f"READY FOR PUSHBACK | "
+                f"gate={rw215.assigned_gate.gate_id}"
+            )
 
         screen.fill((20, 24, 28))
 

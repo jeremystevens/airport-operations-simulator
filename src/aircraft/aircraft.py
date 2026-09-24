@@ -8,7 +8,11 @@ class AircraftState(Enum):
     RUNWAY = "runway"
     TAXI_IN = "taxi_in"
     AT_GATE = "at_gate"
+    DEBOARDING = "deboarding"
+    UNLOADING = "unloading"
     SERVICING = "servicing"
+    BOARDING = "boarding"
+    READY_FOR_PUSHBACK = "ready_for_pushback"
     PUSHBACK = "pushback"
     TAXI_OUT = "taxi_out"
     HOLD_SHORT = "hold_short"
@@ -98,6 +102,9 @@ class Aircraft:
         self.ground_hold = False
         self.ground_hold_reason = None
         self.ground_hold_for_aircraft = None
+
+        self.turnaround_timer = 0.0
+        self.turnaround_started = False
 
     def assign_gate(self, gate):
         self.assigned_gate = gate
