@@ -47,7 +47,16 @@ class GroundTrafficController:
     who gets to use a shared bottleneck, who has to hold short of it,
     and when a resource is fully released. AircraftMovementController
     only has to respect aircraft.ground_hold -- it doesn't decide
-    priority or manage conflict-group reservations itself."""
+    priority or manage conflict-group reservations itself.
+
+    The hold/continue decisions themselves are issued as GroundController
+    commands and applied through CommandExecutor, so the same authority
+    pipeline used for taxi clearances governs this traffic-conflict
+    arbitration."""
+
+    def __init__(self, ground_controller, command_executor):
+        self.ground_controller = ground_controller
+        self.command_executor = command_executor
 
     def update(self, airport, aircraft_list, dt):
         for aircraft in aircraft_list:
@@ -123,6 +132,7 @@ class GroundTrafficController:
                     aircraft,
                     blocking_aircraft,
                     group_id,
+                    airport,
                 )
 
             return
@@ -130,7 +140,7 @@ class GroundTrafficController:
         # No contention. If we were holding, clear that, and if we're
         # close enough to actually need the resource, claim it.
         if aircraft.ground_hold:
-            self._clear_hold(aircraft, group_id)
+            self._clear_hold(aircraft, group_id, airport)
 
         if entry_distance <= CONFLICT_LOOKAHEAD_DISTANCE:
             if airport.reserve_taxiway_conflict(
@@ -269,7 +279,7 @@ class GroundTrafficController:
         owner.taxiway_conflict_exit_point = None
         owner.taxiway_conflict_entered = False
 
-        self._apply_hold(owner, aircraft, group_id)
+        self._apply_hold(owner, aircraft, group_id, airport)
 
     def _find_blocking_aircraft(
         self,
@@ -327,6 +337,7 @@ class GroundTrafficController:
         aircraft,
         blocking_aircraft,
         group_id,
+        airport,
     ):
         if (
             aircraft.ground_hold
@@ -335,41 +346,61 @@ class GroundTrafficController:
         ):
             return
 
-        aircraft.ground_hold = True
-
-        aircraft.ground_hold_reason = (
+        reason = (
             "opposing_arrival"
             if taxi_priority(blocking_aircraft)
             > taxi_priority(aircraft)
             else "traffic"
         )
 
-        aircraft.ground_hold_for_aircraft = (
-            blocking_aircraft.flight_id
+        command = self.ground_controller.evaluate_hold_position(
+            aircraft,
+            reason=reason,
+            traffic_id=blocking_aircraft.flight_id,
+            resource_id=group_id,
         )
 
-        print(
-            f"[GROUND] {aircraft.flight_id} HOLD POSITION | "
-            f"traffic={blocking_aircraft.flight_id} | "
-            f"reason={aircraft.ground_hold_reason} | "
-            f"resource={group_id}"
+        if command is None:
+            return
+
+        executed = self.command_executor.execute(
+            command,
+            airport,
         )
 
-    def _clear_hold(self, aircraft, group_id):
+        if executed:
+            print(
+                f"[GROUND] {aircraft.flight_id} HOLD POSITION | "
+                f"traffic={blocking_aircraft.flight_id} | "
+                f"reason={command.reason} | "
+                f"resource={group_id}"
+            )
+
+    def _clear_hold(self, aircraft, group_id, airport):
         if not aircraft.ground_hold:
             return
 
         cleared_traffic = aircraft.ground_hold_for_aircraft
 
-        aircraft.ground_hold = False
-        aircraft.ground_hold_reason = None
-        aircraft.ground_hold_for_aircraft = None
-
-        print(
-            f"[GROUND] {aircraft.flight_id} CONTINUE TAXI | "
-            f"traffic={cleared_traffic} clear | "
-            f"resource={group_id}"
+        command = self.ground_controller.evaluate_continue_taxi(
+            aircraft,
+            resource_id=group_id,
         )
+
+        if command is None:
+            return
+
+        executed = self.command_executor.execute(
+            command,
+            airport,
+        )
+
+        if executed:
+            print(
+                f"[GROUND] {aircraft.flight_id} CONTINUE TAXI | "
+                f"traffic={cleared_traffic} clear | "
+                f"resource={group_id}"
+            )
 
     def _process_pending_release(self, aircraft, airport):
         if aircraft.reserved_taxiway_conflict is None:

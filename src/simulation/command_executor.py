@@ -1,5 +1,7 @@
 from src.aircraft.aircraft import AircraftState
 from src.simulation.commands import (
+    ContinueTaxi,
+    HoldPosition,
     LandingClearance,
     LineUpAndWaitClearance,
     TakeoffClearance,
@@ -9,6 +11,20 @@ from src.simulation.pathfinding import find_taxiway_path
 
 
 class CommandExecutor:
+    def _find_aircraft(
+        self,
+        airport,
+        aircraft_id,
+    ):
+        return next(
+            (
+                aircraft
+                for aircraft in airport.aircraft
+                if aircraft.flight_id == aircraft_id
+            ),
+            None,
+        )
+
     def execute(
         self,
         command,
@@ -43,6 +59,18 @@ class CommandExecutor:
 
         if isinstance(command, TaxiClearance):
             return self._execute_taxi_clearance(
+                command,
+                airport,
+            )
+
+        if isinstance(command, HoldPosition):
+            return self._execute_hold_position(
+                command,
+                airport,
+            )
+
+        if isinstance(command, ContinueTaxi):
+            return self._execute_continue_taxi(
                 command,
                 airport,
             )
@@ -259,5 +287,75 @@ class CommandExecutor:
             list(command.route),
             destination=command.destination,
         )
+
+        return True
+
+    def _execute_hold_position(
+        self,
+        command,
+        airport,
+    ):
+        aircraft = self._find_aircraft(
+            airport,
+            command.aircraft_id,
+        )
+
+        if aircraft is None:
+            return False
+
+        if aircraft.state not in (
+            AircraftState.TAXI_IN,
+            AircraftState.TAXI_OUT,
+        ):
+            return False
+
+        if aircraft.ground_hold:
+            return False
+
+        aircraft.ground_hold = True
+        aircraft.ground_hold_reason = command.reason
+        aircraft.ground_hold_for_aircraft = (
+            command.traffic_id
+        )
+        aircraft.speed = 0.0
+
+        return True
+
+    def _execute_continue_taxi(
+        self,
+        command,
+        airport,
+    ):
+        aircraft = self._find_aircraft(
+            airport,
+            command.aircraft_id,
+        )
+
+        if aircraft is None:
+            return False
+
+        if aircraft.state not in (
+            AircraftState.TAXI_IN,
+            AircraftState.TAXI_OUT,
+        ):
+            return False
+
+        if not aircraft.ground_hold:
+            return False
+
+        if command.resource_id is not None:
+            owner = airport.get_taxiway_conflict_owner(
+                command.resource_id
+            )
+
+            if (
+                owner is not None
+                and owner != aircraft.flight_id
+            ):
+                return False
+
+        aircraft.ground_hold = False
+        aircraft.ground_hold_reason = None
+        aircraft.ground_hold_for_aircraft = None
 
         return True

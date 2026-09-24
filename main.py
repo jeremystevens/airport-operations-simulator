@@ -135,7 +135,10 @@ def main():
         GateAssignmentController()
     )
     ground_traffic_controller = (
-        GroundTrafficController()
+        GroundTrafficController(
+            ground_controller,
+            command_executor,
+        )
     )
 
     tower_clearance_timer = 0.0
