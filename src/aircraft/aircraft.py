@@ -4,6 +4,7 @@ from enum import Enum, IntEnum
 class AircraftState(Enum):
     APPROACH = "approach"
     LANDING = "landing"
+    LANDING_ROLL = "landing_roll"
     RUNWAY = "runway"
     TAXI_IN = "taxi_in"
     AT_GATE = "at_gate"
@@ -72,6 +73,31 @@ class Aircraft:
 
         self.pushback_target = None
         self.pushback_speed = 0.0
+
+        self.runway_exit_ready = False
+
+        self.current_taxiway_node = None
+        self.reserved_taxiway_segment = None
+        self.waiting_for_taxiway = None
+
+        self.reserved_taxiway_conflict = None
+        self.waiting_for_taxiway_conflict = None
+
+        # Bookkeeping for the delayed (footprint-based) release of a
+        # held conflict resource -- not part of the public API, just
+        # tracks where the aircraft was when it left the resource's
+        # segments so we know when it has cleared by a safety margin.
+        self.taxiway_conflict_exit_point = None
+
+        # True once the aircraft has actually been on one of the
+        # reserved conflict group's segments. A reservation made via
+        # lookahead (before the aircraft physically reaches the group)
+        # must not be mistaken for having already exited it.
+        self.taxiway_conflict_entered = False
+
+        self.ground_hold = False
+        self.ground_hold_reason = None
+        self.ground_hold_for_aircraft = None
 
     def assign_gate(self, gate):
         self.assigned_gate = gate

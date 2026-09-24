@@ -24,6 +24,7 @@ class TaxiwaySegment:
         name,
         width=70,
         render_surface=True,
+        conflict_group=None,
     ):
         self.segment_id = segment_id
 
@@ -33,8 +34,32 @@ class TaxiwaySegment:
         self.name = name
         self.width = width
         self.render_surface = render_surface
+        self.conflict_group = conflict_group
 
         self.occupied = False
+        self.occupied_by = None
+
+    def is_available_for(self, aircraft_id):
+        return (
+            not self.occupied
+            or self.occupied_by == aircraft_id
+        )
+
+    def reserve(self, aircraft_id):
+        if not self.is_available_for(aircraft_id):
+            return False
+
+        self.occupied = True
+        self.occupied_by = aircraft_id
+        return True
+
+    def release(self, aircraft_id):
+        if self.occupied_by != aircraft_id:
+            return False
+
+        self.occupied = False
+        self.occupied_by = None
+        return True
 
     @property
     def length(self):

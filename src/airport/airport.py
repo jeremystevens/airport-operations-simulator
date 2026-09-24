@@ -33,6 +33,8 @@ class Airport:
         self.service_nodes = {}
         self.service_segments = []
 
+        self.taxiway_conflict_owners = {}
+
     def add_runway(self, runway):
         self.runways.append(runway)
 
@@ -47,6 +49,66 @@ class Airport:
 
     def add_taxiway_segment(self, segment):
         self.taxiway_segments.append(segment)
+
+    def get_taxiway_segment_between(
+        self,
+        node_a_id,
+        node_b_id,
+    ):
+        for segment in self.taxiway_segments:
+            ids = {
+                segment.start_node.node_id,
+                segment.end_node.node_id,
+            }
+
+            if ids == {
+                node_a_id,
+                node_b_id,
+            }:
+                return segment
+
+        return None
+
+    def get_taxiway_conflict_owner(
+        self,
+        group_id,
+    ):
+        return self.taxiway_conflict_owners.get(
+            group_id
+        )
+
+    def reserve_taxiway_conflict(
+        self,
+        group_id,
+        aircraft_id,
+    ):
+        owner = self.get_taxiway_conflict_owner(
+            group_id
+        )
+
+        if owner is not None and owner != aircraft_id:
+            return False
+
+        self.taxiway_conflict_owners[group_id] = (
+            aircraft_id
+        )
+
+        return True
+
+    def release_taxiway_conflict(
+        self,
+        group_id,
+        aircraft_id,
+    ):
+        owner = self.get_taxiway_conflict_owner(
+            group_id
+        )
+
+        if owner != aircraft_id:
+            return False
+
+        del self.taxiway_conflict_owners[group_id]
+        return True
 
     def add_terminal(self, terminal):
         self.terminals.append(terminal)

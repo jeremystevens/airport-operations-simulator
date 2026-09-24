@@ -38,6 +38,18 @@ from src.simulation.service_pathfinding import (
 from src.simulation.airborne_movement import (
     AirborneMovementController,
 )
+from src.simulation.approach_movement import (
+    ApproachMovementController,
+)
+from src.simulation.gate_assignment import (
+    GateAssignmentController,
+)
+from src.simulation.ground_traffic import (
+    GroundTrafficController,
+)
+from src.simulation.landing import (
+    LandingController,
+)
 from src.simulation.takeoff import (
     TakeoffController,
 )
@@ -110,6 +122,16 @@ def main():
     takeoff_controller = TakeoffController()
     airborne_movement_controller = (
         AirborneMovementController()
+    )
+    approach_movement_controller = (
+        ApproachMovementController()
+    )
+    landing_controller = LandingController()
+    gate_assignment_controller = (
+        GateAssignmentController()
+    )
+    ground_traffic_controller = (
+        GroundTrafficController()
     )
 
     tower_clearance_timer = 0.0
@@ -268,6 +290,23 @@ def main():
         )
     )
 
+    rwy_exit_a3 = TaxiwayNode(
+        "RWY_EXIT_A3",
+        (700, 0),
+    )
+
+    airport.add_taxiway_node(rwy_exit_a3)
+
+    airport.add_taxiway_segment(
+        TaxiwaySegment(
+            "RWY_EXIT_A3_TO_RWY_A3",
+            rwy_exit_a3,
+            runway_a3,
+            name="A3 EXIT",
+            render_surface=False,
+        )
+    )
+
     terminal_1 = Terminal(
         terminal_id="T1",
         name="Terminal 1",
@@ -353,6 +392,33 @@ def main():
 
     airport.add_aircraft(rw901)
 
+    rw215 = Aircraft(
+        flight_id="RW215",
+        aircraft_type="Aero 320",
+        size=AircraftSize.NARROWBODY,
+        operation=AircraftOperation.PASSENGER,
+        position=(-5500, 0),
+        heading=90.0,
+    )
+
+    rw215.state = AircraftState.APPROACH
+    rw215.speed = 1800.0
+    rw215.altitude = 2500.0
+    rw215.passenger_capacity = 186
+    rw215.passengers = 171
+
+    airport.add_aircraft(rw215)
+
+    landing_clearance_x = -4000.0
+    rw215_vacated_runway = False
+
+    gate_stop_node_map = {
+        "A1": "A1_STOP",
+        "A2": "A2_STOP",
+        "A3": "A3_STOP",
+        "A4": "A4_STOP",
+    }
+
     apron_center = TaxiwayNode(
         "APRON_CENTER",
         (0, 800),
@@ -394,8 +460,35 @@ def main():
             apron_center,
             "APRON",
             width=60,
+            conflict_group="T1_APRON_ACCESS",
         )
     )
+
+    # Reference hold point on the departure side of T1_APRON_ACCESS,
+    # derived from existing geometry (extrapolated along the
+    # apron_center -> GATE_A2 approach line) at the two-narrowbody
+    # reference clearance distance. The actual stop distance used at
+    # runtime is computed dynamically per aircraft pairing by
+    # GroundTrafficController; this node exists for graph completeness
+    # and future reference/visualization.
+    _hold_out_direction = (
+        gate_a2_node.position - apron_center.position
+    ).normalize()
+
+    _hold_out_reference_clearance = (
+        300.0 / 2.0 + 280.0 / 2.0 + 75.0
+    )
+
+    t1_access_hold_out = TaxiwayNode(
+        "T1_ACCESS_HOLD_OUT",
+        tuple(
+            apron_center.position
+            + _hold_out_direction
+            * _hold_out_reference_clearance
+        ),
+    )
+
+    airport.add_taxiway_node(t1_access_hold_out)
 
     apron_segments = [
         TaxiwaySegment(
@@ -760,6 +853,12 @@ def main():
 
                     tug_01.active = False
 
+        ground_traffic_controller.update(
+            airport,
+            airport.aircraft,
+            sim_dt,
+        )
+
         if rw428.state not in (
             AircraftState.TAKEOFF,
             AircraftState.AIRBORNE,
@@ -885,6 +984,193 @@ def main():
                 f"position=({rw428.position[0]:.1f}, "
                 f"{rw428.position[1]:.1f})"
             )
+
+        approach_movement_controller.update(
+            rw215,
+            sim_dt,
+        )
+
+        if (
+            rw215.state == AircraftState.APPROACH
+            and rw215.position[0] >= landing_clearance_x
+        ):
+            command = (
+                tower_controller.evaluate_landing(
+                    rw215,
+                    runway_09_27,
+                    90.0,
+                )
+            )
+
+            if command is not None:
+                executed = (
+                    command_executor.execute(
+                        command,
+                        airport,
+                    )
+                )
+
+                if executed:
+                    print(
+                        f"[TOWER] {rw215.flight_id} "
+                        f"CLEARED TO LAND | "
+                        f"runway={runway_09_27.name} | "
+                        f"heading={rw215.heading:.0f}"
+                    )
+
+        landing_event = landing_controller.update(
+            rw215,
+            sim_dt,
+        )
+
+        if (
+            rw215.state == AircraftState.LANDING
+            and rw215.position[0] > 2600.0
+        ):
+            print(
+                f"[LANDING WARNING] "
+                f"{rw215.flight_id} passed runway end "
+                f"while still LANDING | "
+                f"altitude={rw215.altitude:.1f}"
+            )
+
+        if landing_event == "touchdown":
+            print(
+                f"[LANDING] {rw215.flight_id} TOUCHDOWN | "
+                f"speed={rw215.speed:.1f} | "
+                f"altitude={rw215.altitude:.1f} | "
+                f"position=({rw215.position[0]:.1f}, "
+                f"{rw215.position[1]:.1f}) | "
+                f"runway={runway_09_27.name}"
+            )
+
+        elif landing_event == "exit_speed_reached":
+            print(
+                f"[LANDING] {rw215.flight_id} "
+                f"EXIT SPEED REACHED | "
+                f"speed={rw215.speed:.1f}"
+            )
+
+        elif landing_event == "runway_exit":
+            rw215.set_state(
+                AircraftState.TAXI_IN
+            )
+
+            rw215.assign_route(
+                [
+                    "RWY_A3",
+                    "A3",
+                ],
+                destination="A3",
+            )
+
+            print(
+                f"[GROUND] {rw215.flight_id} "
+                f"EXITING RUNWAY | exit=A3"
+            )
+
+        if (
+            rw215.state == AircraftState.TAXI_IN
+            and not rw215_vacated_runway
+            and rw215.position[1] >= 90.0
+        ):
+            rw215_vacated_runway = True
+            runway_09_27.occupied = False
+
+            print(
+                f"[GROUND] {rw215.flight_id} "
+                f"RUNWAY VACATED | "
+                f"runway={runway_09_27.name} | "
+                f"exit=A3"
+            )
+
+            assigned_gate = (
+                gate_assignment_controller.find_gate(
+                    rw215,
+                    airport,
+                )
+            )
+
+            if assigned_gate is not None:
+                if assigned_gate.reserve(
+                    rw215.flight_id
+                ):
+                    rw215.assign_gate(assigned_gate)
+
+                    print(
+                        f"[GATE] {rw215.flight_id} "
+                        f"ASSIGNED | "
+                        f"gate={assigned_gate.gate_id}"
+                    )
+            else:
+                print(
+                    f"[GATE] {rw215.flight_id} "
+                    f"NO COMPATIBLE GATE AVAILABLE"
+                )
+
+        if rw215.state not in (
+            AircraftState.APPROACH,
+            AircraftState.LANDING,
+            AircraftState.LANDING_ROLL,
+            AircraftState.TAKEOFF,
+            AircraftState.AIRBORNE,
+        ):
+            aircraft_movement.update(
+                rw215,
+                airport,
+                sim_dt,
+            )
+
+        if (
+            rw215.state == AircraftState.TAXI_IN
+            and not rw215.has_route
+        ):
+            if (
+                rw215.route_destination == "A3"
+                and rw215.assigned_gate is not None
+            ):
+                destination_node = (
+                    gate_stop_node_map[
+                        rw215.assigned_gate.gate_id
+                    ]
+                )
+
+                gate_route = find_taxiway_path(
+                    airport,
+                    "A3",
+                    destination_node,
+                )
+
+                rw215.assign_route(
+                    gate_route,
+                    destination=destination_node,
+                )
+
+            elif (
+                rw215.assigned_gate is not None
+                and rw215.route_destination
+                == gate_stop_node_map[
+                    rw215.assigned_gate.gate_id
+                ]
+            ):
+                rw215.assigned_gate.occupy(rw215)
+
+                rw215.set_state(
+                    AircraftState.AT_GATE
+                )
+
+                rw215.speed = 0.0
+                rw215.clear_route()
+
+                print(
+                    f"[GATE] {rw215.flight_id} "
+                    f"ARRIVED | "
+                    f"gate={rw215.assigned_gate.gate_id} | "
+                    f"state={rw215.state.value}"
+                )
+
+            else:
+                rw215.speed = 0.0
 
         screen.fill((20, 24, 28))
 

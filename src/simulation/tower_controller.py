@@ -1,5 +1,6 @@
 from src.aircraft.aircraft import AircraftState
 from src.simulation.commands import (
+    LandingClearance,
     LineUpAndWaitClearance,
     TakeoffClearance,
 )
@@ -50,6 +51,27 @@ class TowerController:
             return None
 
         return TakeoffClearance(
+            aircraft_id=aircraft.flight_id,
+            runway_name=runway.name,
+            runway_heading=runway_heading,
+        )
+
+    def evaluate_landing(
+        self,
+        aircraft,
+        runway,
+        runway_heading,
+    ):
+        if not self.enabled:
+            return None
+
+        if aircraft.state != AircraftState.APPROACH:
+            return None
+
+        if runway.occupied:
+            return None
+
+        return LandingClearance(
             aircraft_id=aircraft.flight_id,
             runway_name=runway.name,
             runway_heading=runway_heading,

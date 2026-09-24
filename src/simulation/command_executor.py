@@ -1,5 +1,6 @@
 from src.aircraft.aircraft import AircraftState
 from src.simulation.commands import (
+    LandingClearance,
     LineUpAndWaitClearance,
     TakeoffClearance,
 )
@@ -26,6 +27,15 @@ class CommandExecutor:
             TakeoffClearance,
         ):
             return self._execute_takeoff(
+                command,
+                airport,
+            )
+
+        if isinstance(
+            command,
+            LandingClearance,
+        ):
+            return self._execute_landing(
                 command,
                 airport,
             )
@@ -148,5 +158,58 @@ class CommandExecutor:
         aircraft.set_state(
             AircraftState.TAKEOFF
         )
+
+        return True
+
+    def _execute_landing(
+        self,
+        command,
+        airport,
+    ):
+        aircraft = next(
+            (
+                aircraft
+                for aircraft in airport.aircraft
+                if aircraft.flight_id
+                == command.aircraft_id
+            ),
+            None,
+        )
+
+        if aircraft is None:
+            raise ValueError(
+                f"Unknown aircraft: "
+                f"{command.aircraft_id}"
+            )
+
+        runway = next(
+            (
+                runway
+                for runway in airport.runways
+                if runway.name
+                == command.runway_name
+            ),
+            None,
+        )
+
+        if runway is None:
+            raise ValueError(
+                f"Unknown runway: "
+                f"{command.runway_name}"
+            )
+
+        # Revalidate immediately before execution.
+        if aircraft.state != AircraftState.APPROACH:
+            return False
+
+        if runway.occupied:
+            return False
+
+        aircraft.heading = command.runway_heading
+        aircraft.set_state(
+            AircraftState.LANDING
+        )
+
+        runway.occupied = True
 
         return True

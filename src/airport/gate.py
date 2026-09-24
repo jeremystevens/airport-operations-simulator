@@ -34,10 +34,30 @@ class Gate:
             and aircraft.size <= self.max_aircraft_size
         )
 
+    def reserve(self, aircraft_id):
+        if not self.available:
+            return False
+
+        self.reserved = True
+        self.aircraft_id = aircraft_id
+        return True
+
     def occupy(self, aircraft):
-        if self.occupied:
+        if (
+            self.occupied
+            and self.aircraft_id != aircraft.flight_id
+        ):
             raise RuntimeError(
                 f"Gate {self.gate_id} is already occupied"
+            )
+
+        if (
+            self.reserved
+            and self.aircraft_id != aircraft.flight_id
+        ):
+            raise RuntimeError(
+                f"Gate {self.gate_id} is reserved for "
+                f"another aircraft"
             )
 
         if aircraft.size > self.max_aircraft_size:

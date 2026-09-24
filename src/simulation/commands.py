@@ -16,3 +16,10 @@ class TakeoffClearance:
     aircraft_id: str
     runway_name: str
     runway_heading: float
+
+
+@dataclass(frozen=True)
+class LandingClearance:
+    aircraft_id: str
+    runway_name: str
+    runway_heading: float
