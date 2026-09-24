@@ -3,6 +3,7 @@ from src.simulation.commands import (
     LandingClearance,
     LineUpAndWaitClearance,
     TakeoffClearance,
+    TaxiClearance,
 )
 from src.simulation.pathfinding import find_taxiway_path
 
@@ -36,6 +37,12 @@ class CommandExecutor:
             LandingClearance,
         ):
             return self._execute_landing(
+                command,
+                airport,
+            )
+
+        if isinstance(command, TaxiClearance):
+            return self._execute_taxi_clearance(
                 command,
                 airport,
             )
@@ -211,5 +218,46 @@ class CommandExecutor:
         )
 
         runway.occupied = True
+
+        return True
+
+    def _execute_taxi_clearance(
+        self,
+        command,
+        airport,
+    ):
+        aircraft = next(
+            (
+                aircraft
+                for aircraft in airport.aircraft
+                if aircraft.flight_id
+                == command.aircraft_id
+            ),
+            None,
+        )
+
+        if aircraft is None:
+            return False
+
+        if aircraft.state not in (
+            AircraftState.TAXI_IN,
+            AircraftState.TAXI_OUT,
+        ):
+            return False
+
+        if not command.route:
+            return False
+
+        for node_id in command.route:
+            if node_id not in airport.taxiway_nodes:
+                return False
+
+        if command.destination not in airport.taxiway_nodes:
+            return False
+
+        aircraft.assign_route(
+            list(command.route),
+            destination=command.destination,
+        )
 
         return True

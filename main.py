@@ -44,6 +44,9 @@ from src.simulation.approach_movement import (
 from src.simulation.gate_assignment import (
     GateAssignmentController,
 )
+from src.simulation.ground_controller import (
+    GroundController,
+)
 from src.simulation.ground_traffic import (
     GroundTrafficController,
 )
@@ -118,6 +121,7 @@ def main():
     )
 
     tower_controller = TowerController()
+    ground_controller = GroundController()
     command_executor = CommandExecutor()
     takeoff_controller = TakeoffController()
     airborne_movement_controller = (
@@ -1141,10 +1145,27 @@ def main():
                     destination_node,
                 )
 
-                rw215.assign_route(
-                    gate_route,
-                    destination=destination_node,
+                command = (
+                    ground_controller.evaluate_taxi_clearance(
+                        rw215,
+                        gate_route,
+                        destination_node,
+                    )
                 )
+
+                if command is not None:
+                    executed = command_executor.execute(
+                        command,
+                        airport,
+                    )
+
+                    if executed:
+                        print(
+                            f"[GROUND] {rw215.flight_id} "
+                            f"TAXI CLEARANCE | "
+                            f"gate={rw215.assigned_gate.gate_id} | "
+                            f"destination={destination_node}"
+                        )
 
             elif (
                 rw215.assigned_gate is not None

@@ -23,3 +23,10 @@ class LandingClearance:
     aircraft_id: str
     runway_name: str
     runway_heading: float
+
+
+@dataclass(frozen=True)
+class TaxiClearance:
+    aircraft_id: str
+    route: tuple[str, ...]
+    destination: str
