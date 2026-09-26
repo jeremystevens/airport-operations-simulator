@@ -54,7 +54,14 @@ class ServiceTaskController:
     """Temporary stand-in for real ground-service vehicles (2.5c). Runs
     every required ServiceTask concurrently during SERVICING using sim_dt,
     so service duration scales with simulation speed like everything
-    else."""
+    else.
+
+    A service listed in excluded_services is skipped entirely -- some
+    other controller (e.g. a ground-service vehicle) owns its lifecycle
+    instead."""
+
+    def __init__(self, excluded_services=None):
+        self.excluded_services = set(excluded_services or [])
 
     def update(self, aircraft, dt):
         if aircraft.state != AircraftState.SERVICING:
@@ -63,6 +70,9 @@ class ServiceTaskController:
         events = []
 
         for task in aircraft.service_tasks:
+            if task.service_type in self.excluded_services:
+                continue
+
             if task.status == ServiceStatus.PENDING:
                 task.status = ServiceStatus.IN_PROGRESS
                 events.append(("started", task.service_type))

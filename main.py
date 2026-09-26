@@ -66,7 +66,11 @@ from src.simulation.turnaround import (
     TurnaroundController,
 )
 from src.simulation.turnaround_service import (
+    SERVICE_DURATIONS,
+    ServiceStatus,
     ServiceTaskController,
+    ServiceType,
+    get_service_task,
 )
 from src.ui.hud import HUD
 from src.vehicles.ground_vehicle import (
@@ -150,7 +154,11 @@ def main():
         )
     )
     turnaround_controller = TurnaroundController()
-    service_task_controller = ServiceTaskController()
+    service_task_controller = ServiceTaskController(
+        excluded_services={
+            ServiceType.FUEL,
+        }
+    )
 
     tower_clearance_timer = 0.0
     takeoff_clearance_timer = 0.0
@@ -1347,6 +1355,63 @@ def main():
                     f"[SERVICE] {rw215.flight_id} "
                     f"{service_type.value.upper()} COMPLETE"
                 )
+
+        fuel_task = get_service_task(rw215, ServiceType.FUEL)
+
+        if fuel_truck.state == GroundVehicleState.CONNECTED:
+            if (
+                fuel_task is not None
+                and fuel_task.status == ServiceStatus.PENDING
+                and fuel_truck.assigned_aircraft_id
+                == rw215.flight_id
+            ):
+                fuel_task.status = ServiceStatus.IN_PROGRESS
+                fuel_task.elapsed = 0.0
+
+                fuel_truck.service_elapsed = 0.0
+                fuel_truck.state = (
+                    GroundVehicleState.SERVICING
+                )
+
+                print(
+                    f"[SERVICE] {rw215.flight_id} "
+                    f"FUEL STARTED | "
+                    f"vehicle={fuel_truck.vehicle_id}"
+                )
+
+        elif fuel_truck.state == GroundVehicleState.SERVICING:
+            fueling_still_valid = (
+                fuel_truck.assigned_aircraft_id
+                == rw215.flight_id
+                and rw215.state == AircraftState.SERVICING
+                and fuel_task is not None
+                and fuel_task.status
+                == ServiceStatus.IN_PROGRESS
+            )
+
+            if fueling_still_valid:
+                fuel_task.elapsed += sim_dt
+
+                if (
+                    fuel_task.elapsed
+                    >= SERVICE_DURATIONS[ServiceType.FUEL]
+                ):
+                    fuel_task.elapsed = SERVICE_DURATIONS[
+                        ServiceType.FUEL
+                    ]
+                    fuel_task.status = (
+                        ServiceStatus.COMPLETE
+                    )
+                    fuel_truck.speed = 0.0
+                    fuel_truck.state = (
+                        GroundVehicleState.CONNECTED
+                    )
+
+                    print(
+                        f"[SERVICE] {rw215.flight_id} "
+                        f"FUEL COMPLETE | "
+                        f"vehicle={fuel_truck.vehicle_id}"
+                    )
 
         turnaround_event = turnaround_controller.update(
             rw215,
