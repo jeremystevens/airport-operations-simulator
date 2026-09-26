@@ -64,9 +64,20 @@ class BaggageTractor(GroundVehicle):
         self._max_history_length = 400
 
     def record_position(self):
-        self._position_history.append(
-            pygame.Vector2(self.position)
-        )
+        current = pygame.Vector2(self.position)
+
+        # While stationary (parked, held for traffic, connected...) don't
+        # keep padding the history with duplicate points -- under the
+        # bounded cap that would eventually evict the genuine trailing
+        # history the carts still need, snapping them onto the tractor.
+        if (
+            self._position_history
+            and self._position_history[-1].distance_to(current)
+            < 1e-6
+        ):
+            return
+
+        self._position_history.append(current)
 
         if len(self._position_history) > self._max_history_length:
             self._position_history = self._position_history[

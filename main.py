@@ -30,6 +30,7 @@ from src.simulation.command_executor import (
 from src.simulation.ground_vehicle_movement import (
     GroundVehicleMovementController,
     dispatch_ground_vehicle,
+    find_consist_blocking_vehicle,
     get_baggage_service_position,
     get_fuel_service_position,
     is_baggage_consist_safe,
@@ -403,7 +404,7 @@ def main():
     tug_01 = GroundVehicle(
         vehicle_id="TUG-01",
         vehicle_type=GroundVehicleType.PUSHBACK_TUG,
-        position=(-850, 1200),
+        position=(-850, 1125),
         heading=180,
     )
 
@@ -472,6 +473,8 @@ def main():
 
     baggage_settle_reference = None
     baggage_parking_blocked = False
+    baggage_holding_for_vehicle = None
+    baggage_tractor_at_target = False
 
     gate_stop_node_map = {
         "A1": "A1_STOP",
@@ -713,7 +716,7 @@ def main():
 
     tug_a1_home = ServiceNode(
         "TUG_A1_HOME",
-        (-850, 1200),
+        (-850, 1125),
     )
 
     tug_a1_connect = ServiceNode(
@@ -782,7 +785,7 @@ def main():
 
     bag_a4_node = ServiceNode(
         "BAG_A4",
-        (1000, 1275),
+        (1110, 1120),
     )
 
     for node in (
@@ -802,7 +805,7 @@ def main():
     airport.add_service_segment(
         ServiceSegment(
             "BAG_A4_SPUR",
-            service_a4,
+            service_east,
             bag_a4_node,
         )
     )
@@ -1162,6 +1165,8 @@ def main():
                 baggage_tractor.operation_timer = 0.0
                 baggage_settle_reference = None
                 baggage_parking_blocked = False
+                baggage_holding_for_vehicle = None
+                baggage_tractor_at_target = False
 
                 baggage_tractor.state = (
                     GroundVehicleState.APPROACHING
@@ -1180,7 +1185,11 @@ def main():
                     f"reason=unsafe_target"
                 )
 
-        if baggage_tractor.state == GroundVehicleState.APPROACHING:
+        if (
+            baggage_tractor.state
+            == GroundVehicleState.APPROACHING
+            and not baggage_tractor_at_target
+        ):
             baggage_service_position = (
                 get_baggage_service_position(rw215)
             )
@@ -1189,20 +1198,54 @@ def main():
                 baggage_service_position
             )
 
-            tractor_arrived = (
-                ground_vehicle_movement.move_toward(
+            blocking_vehicle = (
+                find_consist_blocking_vehicle(
+                    airport,
                     baggage_tractor,
-                    baggage_service_position,
-                    sim_dt,
-                    speed=20.0,
+                    minimum_clearance=100.0,
                 )
             )
 
-            if tractor_arrived:
-                baggage_tractor.position = pygame.Vector2(
-                    baggage_service_position
-                )
+            if blocking_vehicle is not None:
                 baggage_tractor.speed = 0.0
+
+                if (
+                    baggage_holding_for_vehicle
+                    != blocking_vehicle.vehicle_id
+                ):
+                    baggage_holding_for_vehicle = (
+                        blocking_vehicle.vehicle_id
+                    )
+
+                    print(
+                        f"[SERVICE] {baggage_tractor.vehicle_id} "
+                        f"APPROACH HOLD | "
+                        f"traffic={blocking_vehicle.vehicle_id}"
+                    )
+            else:
+                if baggage_holding_for_vehicle is not None:
+                    print(
+                        f"[SERVICE] {baggage_tractor.vehicle_id} "
+                        f"APPROACH CONTINUE | "
+                        f"traffic={baggage_holding_for_vehicle}"
+                    )
+                    baggage_holding_for_vehicle = None
+
+                tractor_arrived = (
+                    ground_vehicle_movement.move_toward(
+                        baggage_tractor,
+                        baggage_service_position,
+                        sim_dt,
+                        speed=20.0,
+                    )
+                )
+
+                if tractor_arrived:
+                    baggage_tractor.position = pygame.Vector2(
+                        baggage_service_position
+                    )
+                    baggage_tractor.speed = 0.0
+                    baggage_tractor_at_target = True
 
         baggage_tractor.record_position()
         baggage_tractor.update_carts()
@@ -1210,7 +1253,7 @@ def main():
         if (
             baggage_tractor.state
             == GroundVehicleState.APPROACHING
-            and baggage_tractor.speed == 0.0
+            and baggage_tractor_at_target
             and not baggage_parking_blocked
         ):
             current_cart_positions = [

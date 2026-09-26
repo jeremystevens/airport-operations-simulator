@@ -3,7 +3,37 @@ import math
 import pygame
 
 from src.aircraft.profiles import get_aircraft_dimensions
+from src.simulation.turnaround_service import ServiceType
 from src.vehicles.ground_vehicle import GroundVehicleState
+
+# Aircraft-relative working area for each ground service, expressed as a
+# fraction of aircraft length (longitudinal_factor, positive = toward the
+# nose, negative = toward the tail) and a side ("left"/"right", aircraft-
+# relative -- not tied to any particular gate's compass orientation).
+# get_fuel_service_position() predates this and is left alone (its
+# existing behavior matches longitudinal_factor=0.05, side="left" here,
+# confirmed by the numbers already in use); get_baggage_service_position()
+# is the first to actually read from it.
+SERVICE_ZONE_CONFIG = {
+    ServiceType.FUEL: {
+        "longitudinal_factor": 0.05,
+        "side": "left",
+    },
+    ServiceType.BAGGAGE: {
+        "longitudinal_factor": -0.45,
+        "side": "left",
+    },
+}
+
+
+def _service_side_vector(right, side):
+    if side == "right":
+        return right
+
+    if side == "left":
+        return -right
+
+    raise ValueError(f"Unknown service zone side: {side}")
 
 
 def get_fuel_service_position(
@@ -38,9 +68,9 @@ def get_fuel_service_position(
 def get_baggage_service_position(
     aircraft,
     tractor_clearance=45.0,
-    longitudinal_offset=65.0,
 ):
     dimensions = get_aircraft_dimensions(aircraft)
+    zone = SERVICE_ZONE_CONFIG[ServiceType.BAGGAGE]
 
     heading_radians = math.radians(aircraft.heading)
 
@@ -50,19 +80,20 @@ def get_baggage_service_position(
     )
 
     right = pygame.Vector2(-forward.y, forward.x)
+    side_vector = _service_side_vector(right, zone["side"])
 
     lateral_offset = (
         dimensions["wingspan"] / 2.0 + tractor_clearance
     )
 
-    # Baggage services from the same side as the fuel truck (matching
-    # BAG_A4's staging side), but aft of the wing toward the cargo-hold
-    # area rather than beside it -- so longitudinal_offset is subtracted
-    # along forward (nose direction) rather than added.
+    longitudinal_offset = (
+        dimensions["length"] * zone["longitudinal_factor"]
+    )
+
     return (
         pygame.Vector2(aircraft.position)
-        - right * lateral_offset
-        - forward * longitudinal_offset
+        + side_vector * lateral_offset
+        + forward * longitudinal_offset
     )
 
 
@@ -96,6 +127,84 @@ def is_baggage_consist_safe(aircraft, tractor):
             return False
 
     return True
+
+
+def find_blocking_service_vehicle(
+    airport,
+    vehicle,
+    target_position,
+    minimum_clearance=100.0,
+):
+    target_position = pygame.Vector2(target_position)
+
+    for other in airport.ground_vehicles:
+        if other is vehicle:
+            continue
+
+        if not other.active:
+            continue
+
+        if (
+            target_position.distance_to(
+                pygame.Vector2(other.position)
+            )
+            < minimum_clearance
+        ):
+            return other
+
+        for cart in getattr(other, "carts", []):
+            if (
+                target_position.distance_to(
+                    pygame.Vector2(cart.position)
+                )
+                < minimum_clearance
+            ):
+                return other
+
+    return None
+
+
+def is_service_vehicle_clear(
+    airport,
+    vehicle,
+    target_position,
+    minimum_clearance=100.0,
+):
+    return (
+        find_blocking_service_vehicle(
+            airport,
+            vehicle,
+            target_position,
+            minimum_clearance,
+        )
+        is None
+    )
+
+
+def find_consist_blocking_vehicle(
+    airport,
+    tractor,
+    minimum_clearance=100.0,
+):
+    points = [pygame.Vector2(tractor.position)]
+
+    points += [
+        pygame.Vector2(cart.position)
+        for cart in getattr(tractor, "carts", [])
+    ]
+
+    for point in points:
+        blocker = find_blocking_service_vehicle(
+            airport,
+            tractor,
+            point,
+            minimum_clearance,
+        )
+
+        if blocker is not None:
+            return blocker
+
+    return None
 
 
 def has_connected_service_vehicle(airport, aircraft_id):
