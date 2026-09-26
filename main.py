@@ -84,6 +84,8 @@ WIDTH = 1280
 HEIGHT = 720
 FPS = 60
 
+FUEL_DISCONNECT_DELAY = 2.0
+
 
 def get_tug_connect_position(
     aircraft,
@@ -920,7 +922,10 @@ def main():
 
                     tug_01.active = False
 
-        if fuel_truck.state == GroundVehicleState.DISPATCHED:
+        if fuel_truck.state in (
+            GroundVehicleState.DISPATCHED,
+            GroundVehicleState.RETURNING,
+        ):
             if fuel_truck.has_route:
                 fuel_route_complete = (
                     ground_vehicle_movement.update_route(
@@ -930,7 +935,11 @@ def main():
                     )
                 )
 
-                if fuel_route_complete:
+                if (
+                    fuel_route_complete
+                    and fuel_truck.state
+                    == GroundVehicleState.DISPATCHED
+                ):
                     fuel_truck.speed = 0.0
 
                     print(
@@ -961,6 +970,30 @@ def main():
                             f"aircraft={rw215.flight_id} | "
                             f"reason=unsafe_target"
                         )
+
+                elif (
+                    fuel_route_complete
+                    and fuel_truck.state
+                    == GroundVehicleState.RETURNING
+                ):
+                    fuel_truck.position = pygame.Vector2(
+                        fuel_truck.home_position
+                    )
+                    fuel_truck.speed = 0.0
+                    fuel_truck.state = (
+                        GroundVehicleState.PARKED
+                    )
+                    fuel_truck.active = False
+                    fuel_truck.assigned_aircraft_id = None
+                    fuel_truck.final_target = None
+                    fuel_truck.operation_timer = 0.0
+                    fuel_truck.clear_route()
+
+                    print(
+                        f"[SERVICE] {fuel_truck.vehicle_id} "
+                        f"PARKED | "
+                        f"home=FUEL_HOME"
+                    )
 
         if fuel_truck.state == GroundVehicleState.APPROACHING:
             fuel_service_position = (
@@ -993,6 +1026,46 @@ def main():
                     f"[SERVICE] {fuel_truck.vehicle_id} "
                     f"AIRCRAFT ARRIVED | "
                     f"aircraft={rw215.flight_id}"
+                )
+
+        if fuel_truck.state == GroundVehicleState.DISCONNECTING:
+            fuel_a4_position = airport.service_nodes[
+                "FUEL_A4"
+            ].position
+
+            withdrawn = (
+                ground_vehicle_movement.move_toward(
+                    fuel_truck,
+                    fuel_a4_position,
+                    sim_dt,
+                    speed=25.0,
+                )
+            )
+
+            if withdrawn:
+                fuel_truck.position = pygame.Vector2(
+                    fuel_a4_position
+                )
+                fuel_truck.speed = 0.0
+
+                return_route = find_service_path(
+                    airport,
+                    "FUEL_A4",
+                    "FUEL_HOME",
+                )
+
+                fuel_truck.assign_route(
+                    return_route,
+                    final_target="FUEL_HOME",
+                )
+                fuel_truck.state = (
+                    GroundVehicleState.RETURNING
+                )
+
+                print(
+                    f"[SERVICE] {fuel_truck.vehicle_id} "
+                    f"RETURNING | "
+                    f"home=FUEL_HOME"
                 )
 
         ground_traffic_controller.update(
@@ -1379,6 +1452,29 @@ def main():
                     f"vehicle={fuel_truck.vehicle_id}"
                 )
 
+            elif (
+                fuel_task is not None
+                and fuel_task.status == ServiceStatus.COMPLETE
+                and fuel_truck.assigned_aircraft_id
+                == rw215.flight_id
+            ):
+                fuel_truck.operation_timer += sim_dt
+
+                if (
+                    fuel_truck.operation_timer
+                    >= FUEL_DISCONNECT_DELAY
+                ):
+                    fuel_truck.operation_timer = 0.0
+                    fuel_truck.state = (
+                        GroundVehicleState.DISCONNECTING
+                    )
+
+                    print(
+                        f"[SERVICE] {fuel_truck.vehicle_id} "
+                        f"DISCONNECTING | "
+                        f"aircraft={rw215.flight_id}"
+                    )
+
         elif fuel_truck.state == GroundVehicleState.SERVICING:
             fueling_still_valid = (
                 fuel_truck.assigned_aircraft_id
@@ -1406,6 +1502,7 @@ def main():
                     fuel_truck.state = (
                         GroundVehicleState.CONNECTED
                     )
+                    fuel_truck.operation_timer = 0.0
 
                     print(
                         f"[SERVICE] {rw215.flight_id} "

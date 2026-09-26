@@ -50,6 +50,19 @@ def is_service_position_safe(aircraft, position):
     return distance >= minimum_clearance
 
 
+def has_connected_service_vehicle(airport, aircraft_id):
+    return any(
+        vehicle.assigned_aircraft_id == aircraft_id
+        and vehicle.state
+        in (
+            GroundVehicleState.CONNECTED,
+            GroundVehicleState.SERVICING,
+            GroundVehicleState.DISCONNECTING,
+        )
+        for vehicle in airport.ground_vehicles
+    )
+
+
 def dispatch_ground_vehicle(
     vehicle,
     aircraft,

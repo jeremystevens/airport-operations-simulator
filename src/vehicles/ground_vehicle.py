@@ -17,6 +17,7 @@ class GroundVehicleState(Enum):
     APPROACHING = "approaching"
     CONNECTED = "connected"
     SERVICING = "servicing"
+    DISCONNECTING = "disconnecting"
     PUSHING = "pushing"
     RETURNING = "returning"
 
@@ -47,6 +48,7 @@ class GroundVehicle:
         self.final_target = None
 
         self.service_elapsed = 0.0
+        self.operation_timer = 0.0
 
     def assign_aircraft(self, aircraft):
         self.assigned_aircraft_id = (
