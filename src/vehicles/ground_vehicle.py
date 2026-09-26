@@ -14,6 +14,7 @@ class GroundVehicleType(Enum):
 class GroundVehicleState(Enum):
     PARKED = "parked"
     DISPATCHED = "dispatched"
+    APPROACHING = "approaching"
     CONNECTED = "connected"
     PUSHING = "pushing"
     RETURNING = "returning"

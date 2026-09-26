@@ -2,7 +2,52 @@ import math
 
 import pygame
 
+from src.aircraft.profiles import get_aircraft_dimensions
 from src.vehicles.ground_vehicle import GroundVehicleState
+
+
+def get_fuel_service_position(
+    aircraft,
+    truck_clearance=55.0,
+    longitudinal_offset=15.0,
+):
+    dimensions = get_aircraft_dimensions(aircraft)
+
+    heading_radians = math.radians(aircraft.heading)
+
+    forward = pygame.Vector2(
+        math.sin(heading_radians),
+        -math.cos(heading_radians),
+    )
+
+    right = pygame.Vector2(-forward.y, forward.x)
+
+    lateral_offset = (
+        dimensions["wingspan"] / 2.0 + truck_clearance
+    )
+
+    # Fuel trucks service from the aircraft's left side, matching the
+    # side our fuel staging nodes (FUEL_A4, etc.) are laid out on.
+    return (
+        pygame.Vector2(aircraft.position)
+        - right * lateral_offset
+        + forward * longitudinal_offset
+    )
+
+
+def is_service_position_safe(aircraft, position):
+    dimensions = get_aircraft_dimensions(aircraft)
+
+    minimum_clearance = (
+        max(dimensions["length"], dimensions["wingspan"])
+        / 2.0
+    )
+
+    distance = pygame.Vector2(position).distance_to(
+        pygame.Vector2(aircraft.position)
+    )
+
+    return distance >= minimum_clearance
 
 
 def dispatch_ground_vehicle(
@@ -44,7 +89,11 @@ class GroundVehicleMovementController:
         vehicle,
         target,
         dt,
+        speed=None,
     ):
+        if speed is None:
+            speed = self.drive_speed
+
         position = pygame.Vector2(
             vehicle.position
         )
@@ -77,8 +126,8 @@ class GroundVehicleMovementController:
             self.turn_rate * dt,
         )
 
-        movement = self.drive_speed * dt
-        vehicle.speed = self.drive_speed
+        movement = speed * dt
+        vehicle.speed = speed
 
         if movement >= distance:
             vehicle.position = target

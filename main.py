@@ -30,6 +30,8 @@ from src.simulation.command_executor import (
 from src.simulation.ground_vehicle_movement import (
     GroundVehicleMovementController,
     dispatch_ground_vehicle,
+    get_fuel_service_position,
+    is_service_position_safe,
 )
 from src.simulation.pathfinding import find_taxiway_path
 from src.simulation.pushback import PushbackController
@@ -925,10 +927,65 @@ def main():
 
                     print(
                         f"[SERVICE] {fuel_truck.vehicle_id} "
-                        f"ARRIVED | "
+                        f"STAGING ARRIVED | "
                         f"aircraft={fuel_truck.assigned_aircraft_id} | "
                         f"destination=FUEL_A4"
                     )
+
+                    fuel_service_position = (
+                        get_fuel_service_position(rw215)
+                    )
+
+                    if is_service_position_safe(
+                        rw215,
+                        fuel_service_position,
+                    ):
+                        fuel_truck.final_target = (
+                            fuel_service_position
+                        )
+                        fuel_truck.state = (
+                            GroundVehicleState.APPROACHING
+                        )
+                    else:
+                        print(
+                            f"[SERVICE] {fuel_truck.vehicle_id} "
+                            f"APPROACH BLOCKED | "
+                            f"aircraft={rw215.flight_id} | "
+                            f"reason=unsafe_target"
+                        )
+
+        if fuel_truck.state == GroundVehicleState.APPROACHING:
+            fuel_service_position = (
+                get_fuel_service_position(rw215)
+            )
+
+            fuel_truck.final_target = fuel_service_position
+
+            arrived = (
+                ground_vehicle_movement.move_toward(
+                    fuel_truck,
+                    fuel_service_position,
+                    sim_dt,
+                    speed=25.0,
+                )
+            )
+
+            if arrived:
+                fuel_truck.position = pygame.Vector2(
+                    fuel_service_position
+                )
+                fuel_truck.speed = 0.0
+                fuel_truck.heading = rw215.heading
+                fuel_truck.final_target = None
+                fuel_truck.state = (
+                    GroundVehicleState.CONNECTED
+                )
+
+                print(
+                    f"[SERVICE] {fuel_truck.vehicle_id} "
+                    f"AIRCRAFT ARRIVED | "
+                    f"aircraft={rw215.flight_id}"
+                )
 
         ground_traffic_controller.update(
             airport,
