@@ -105,6 +105,7 @@ class Aircraft:
 
         self.turnaround_timer = 0.0
         self.turnaround_started = False
+        self.service_tasks = []
 
     def assign_gate(self, gate):
         self.assigned_gate = gate

@@ -1,4 +1,9 @@
 from src.aircraft.aircraft import AircraftState
+from src.simulation.turnaround_service import (
+    ServiceTask,
+    ServiceType,
+    all_services_complete,
+)
 
 
 class TurnaroundController:
@@ -6,12 +11,10 @@ class TurnaroundController:
         self,
         deboarding_time=10.0,
         unloading_time=8.0,
-        servicing_time=15.0,
         boarding_time=12.0,
     ):
         self.deboarding_time = deboarding_time
         self.unloading_time = unloading_time
-        self.servicing_time = servicing_time
         self.boarding_time = boarding_time
 
     def start(self, aircraft):
@@ -23,6 +26,11 @@ class TurnaroundController:
 
         aircraft.turnaround_started = True
         aircraft.turnaround_timer = 0.0
+        aircraft.service_tasks = [
+            ServiceTask(ServiceType.BAGGAGE),
+            ServiceTask(ServiceType.FUEL),
+            ServiceTask(ServiceType.CATERING),
+        ]
         aircraft.set_state(
             AircraftState.DEBOARDING
         )
@@ -64,17 +72,15 @@ class TurnaroundController:
             )
             return "servicing"
 
-        if (
-            aircraft.state
-            == AircraftState.SERVICING
-            and aircraft.turnaround_timer
-            >= self.servicing_time
-        ):
-            self._transition(
-                aircraft,
-                AircraftState.BOARDING,
-            )
-            return "boarding"
+        if aircraft.state == AircraftState.SERVICING:
+            if all_services_complete(aircraft):
+                self._transition(
+                    aircraft,
+                    AircraftState.BOARDING,
+                )
+                return "boarding"
+
+            return None
 
         if (
             aircraft.state

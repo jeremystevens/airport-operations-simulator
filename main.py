@@ -62,6 +62,9 @@ from src.simulation.tower_controller import (
 from src.simulation.turnaround import (
     TurnaroundController,
 )
+from src.simulation.turnaround_service import (
+    ServiceTaskController,
+)
 from src.ui.hud import HUD
 from src.vehicles.ground_vehicle import (
     GroundVehicle,
@@ -144,6 +147,7 @@ def main():
         )
     )
     turnaround_controller = TurnaroundController()
+    service_task_controller = ServiceTaskController()
 
     tower_clearance_timer = 0.0
     takeoff_clearance_timer = 0.0
@@ -1206,6 +1210,24 @@ def main():
 
             else:
                 rw215.speed = 0.0
+
+        service_events = service_task_controller.update(
+            rw215,
+            sim_dt,
+        )
+
+        for event_type, service_type in service_events:
+            if event_type == "started":
+                print(
+                    f"[SERVICE] {rw215.flight_id} "
+                    f"{service_type.value.upper()} STARTED"
+                )
+
+            elif event_type == "complete":
+                print(
+                    f"[SERVICE] {rw215.flight_id} "
+                    f"{service_type.value.upper()} COMPLETE"
+                )
 
         turnaround_event = turnaround_controller.update(
             rw215,
