@@ -18,6 +18,12 @@ class GroundVehicleRenderer:
     FUEL_TANK = (195, 45, 40)
     FUEL_CAB = (225, 130, 125)
 
+    BAGGAGE_TRACTOR_BODY = (230, 140, 30)
+    BAGGAGE_TRACTOR_CAB = (245, 190, 110)
+
+    CART_BODY = (150, 150, 155)
+    CART_LOAD = (95, 95, 100)
+
     def draw(
         self,
         screen,
@@ -39,6 +45,23 @@ class GroundVehicleRenderer:
             == GroundVehicleType.FUEL_TRUCK
         ):
             self._draw_fuel_truck(
+                screen,
+                camera,
+                vehicle,
+            )
+
+        elif (
+            vehicle.vehicle_type
+            == GroundVehicleType.BAGGAGE_TRACTOR
+        ):
+            for cart in getattr(vehicle, "carts", []):
+                self._draw_baggage_cart(
+                    screen,
+                    camera,
+                    cart,
+                )
+
+            self._draw_baggage_tractor(
                 screen,
                 camera,
                 vehicle,
@@ -293,6 +316,154 @@ class GroundVehicleRenderer:
 
         position = camera.world_to_screen(
             vehicle.position
+        )
+
+        destination = rotated.get_rect(
+            center=(
+                int(position.x),
+                int(position.y),
+            )
+        )
+
+        screen.blit(
+            rotated,
+            destination,
+        )
+
+    def _draw_baggage_tractor(
+        self,
+        screen,
+        camera,
+        vehicle,
+    ):
+        width = max(
+            4,
+            int(45 * camera.zoom),
+        )
+
+        length = max(
+            6,
+            int(65 * camera.zoom),
+        )
+
+        surface = pygame.Surface(
+            (width + 12, length + 12),
+            pygame.SRCALPHA,
+        )
+
+        pygame.draw.rect(
+            surface,
+            self.BAGGAGE_TRACTOR_BODY,
+            pygame.Rect(6, 6, width, length),
+            border_radius=max(
+                1,
+                int(4 * camera.zoom),
+            ),
+        )
+
+        cab_height = max(
+            3,
+            int(length * 0.35),
+        )
+
+        pygame.draw.rect(
+            surface,
+            self.BAGGAGE_TRACTOR_CAB,
+            pygame.Rect(
+                8,
+                8,
+                max(2, width - 4),
+                cab_height,
+            ),
+        )
+
+        wheel_width = max(2, int(6 * camera.zoom))
+        wheel_height = max(3, int(12 * camera.zoom))
+
+        for x in (2, width + 6):
+            pygame.draw.rect(
+                surface,
+                self.TIRE,
+                pygame.Rect(
+                    x,
+                    int(length * 0.6),
+                    wheel_width,
+                    wheel_height,
+                ),
+            )
+
+        rotated = pygame.transform.rotate(
+            surface,
+            -vehicle.heading,
+        )
+
+        position = camera.world_to_screen(
+            vehicle.position
+        )
+
+        destination = rotated.get_rect(
+            center=(
+                int(position.x),
+                int(position.y),
+            )
+        )
+
+        screen.blit(
+            rotated,
+            destination,
+        )
+
+    def _draw_baggage_cart(
+        self,
+        screen,
+        camera,
+        cart,
+    ):
+        width = max(
+            3,
+            int(35 * camera.zoom),
+        )
+
+        length = max(
+            4,
+            int(40 * camera.zoom),
+        )
+
+        surface = pygame.Surface(
+            (width + 8, length + 8),
+            pygame.SRCALPHA,
+        )
+
+        pygame.draw.rect(
+            surface,
+            self.CART_BODY,
+            pygame.Rect(4, 4, width, length),
+            border_radius=max(
+                1,
+                int(3 * camera.zoom),
+            ),
+        )
+
+        load_margin = max(1, int(4 * camera.zoom))
+
+        pygame.draw.rect(
+            surface,
+            self.CART_LOAD,
+            pygame.Rect(
+                4 + load_margin,
+                4 + load_margin,
+                max(1, width - load_margin * 2),
+                max(1, length - load_margin * 2),
+            ),
+        )
+
+        rotated = pygame.transform.rotate(
+            surface,
+            -cart.heading,
+        )
+
+        position = camera.world_to_screen(
+            cart.position
         )
 
         destination = rotated.get_rect(

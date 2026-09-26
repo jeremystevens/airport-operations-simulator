@@ -73,6 +73,8 @@ from src.simulation.turnaround_service import (
     get_service_task,
 )
 from src.ui.hud import HUD
+from src.vehicles.baggage_cart import BaggageCart
+from src.vehicles.baggage_tractor import BaggageTractor
 from src.vehicles.ground_vehicle import (
     GroundVehicle,
     GroundVehicleState,
@@ -410,6 +412,20 @@ def main():
     )
 
     airport.add_ground_vehicle(fuel_truck)
+
+    baggage_tractor = BaggageTractor(
+        vehicle_id="BAG-01",
+        position=(1050, 1325),
+        heading=0,
+    )
+
+    baggage_tractor.carts = [
+        BaggageCart("CART-01"),
+        BaggageCart("CART-02"),
+        BaggageCart("CART-03"),
+    ]
+
+    airport.add_ground_vehicle(baggage_tractor)
 
     rw901 = Aircraft(
         flight_id="RW901",
@@ -751,6 +767,38 @@ def main():
         )
     )
 
+    bag_home_node = ServiceNode(
+        "BAG_HOME",
+        (1050, 1325),
+    )
+
+    bag_a4_node = ServiceNode(
+        "BAG_A4",
+        (700, 1200),
+    )
+
+    for node in (
+        bag_home_node,
+        bag_a4_node,
+    ):
+        airport.add_service_node(node)
+
+    airport.add_service_segment(
+        ServiceSegment(
+            "BAG_HOME_TO_EAST",
+            bag_home_node,
+            service_east,
+        )
+    )
+
+    airport.add_service_segment(
+        ServiceSegment(
+            "BAG_A4_SPUR",
+            service_a4,
+            bag_a4_node,
+        )
+    )
+
     dispatch_route = find_service_path(
         airport,
         "TUG_A1_HOME",
@@ -1067,6 +1115,32 @@ def main():
                     f"RETURNING | "
                     f"home=FUEL_HOME"
                 )
+
+        if baggage_tractor.state == GroundVehicleState.DISPATCHED:
+            if baggage_tractor.has_route:
+                bag_route_complete = (
+                    ground_vehicle_movement.update_route(
+                        baggage_tractor,
+                        airport,
+                        sim_dt,
+                    )
+                )
+
+                if bag_route_complete:
+                    baggage_tractor.speed = 0.0
+                    baggage_tractor.state = (
+                        GroundVehicleState.STAGED
+                    )
+
+                    print(
+                        f"[SERVICE] {baggage_tractor.vehicle_id} "
+                        f"STAGING ARRIVED | "
+                        f"aircraft={baggage_tractor.assigned_aircraft_id} | "
+                        f"destination=BAG_A4"
+                    )
+
+        baggage_tractor.record_position()
+        baggage_tractor.update_carts()
 
         ground_traffic_controller.update(
             airport,
@@ -1545,6 +1619,26 @@ def main():
                     f"aircraft={rw215.flight_id} | "
                     f"service=fuel | "
                     f"destination=FUEL_A4"
+                )
+
+            bag_route = find_service_path(
+                airport,
+                "BAG_HOME",
+                "BAG_A4",
+            )
+
+            if dispatch_ground_vehicle(
+                baggage_tractor,
+                rw215,
+                bag_route,
+                "BAG_A4",
+            ):
+                print(
+                    f"[SERVICE] {baggage_tractor.vehicle_id} "
+                    f"DISPATCHED | "
+                    f"aircraft={rw215.flight_id} | "
+                    f"service=baggage | "
+                    f"destination=BAG_A4"
                 )
 
         elif turnaround_event == "boarding":
