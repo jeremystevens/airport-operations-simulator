@@ -30,7 +30,9 @@ from src.simulation.command_executor import (
 from src.simulation.ground_vehicle_movement import (
     GroundVehicleMovementController,
     dispatch_ground_vehicle,
+    get_baggage_service_position,
     get_fuel_service_position,
+    is_baggage_consist_safe,
     is_service_position_safe,
 )
 from src.simulation.pathfinding import find_taxiway_path
@@ -87,6 +89,9 @@ HEIGHT = 720
 FPS = 60
 
 FUEL_DISCONNECT_DELAY = 2.0
+
+BAGGAGE_SETTLE_DURATION = 0.5
+BAGGAGE_SETTLE_EPSILON = 0.5
 
 
 def get_tug_connect_position(
@@ -465,6 +470,9 @@ def main():
     landing_clearance_x = -4000.0
     rw215_vacated_runway = False
 
+    baggage_settle_reference = None
+    baggage_parking_blocked = False
+
     gate_stop_node_map = {
         "A1": "A1_STOP",
         "A2": "A2_STOP",
@@ -774,7 +782,7 @@ def main():
 
     bag_a4_node = ServiceNode(
         "BAG_A4",
-        (700, 1200),
+        (1000, 1275),
     )
 
     for node in (
@@ -1139,8 +1147,124 @@ def main():
                         f"destination=BAG_A4"
                     )
 
+        if baggage_tractor.state == GroundVehicleState.STAGED:
+            baggage_service_position = (
+                get_baggage_service_position(rw215)
+            )
+
+            if is_service_position_safe(
+                rw215,
+                baggage_service_position,
+            ):
+                baggage_tractor.final_target = (
+                    baggage_service_position
+                )
+                baggage_tractor.operation_timer = 0.0
+                baggage_settle_reference = None
+                baggage_parking_blocked = False
+
+                baggage_tractor.state = (
+                    GroundVehicleState.APPROACHING
+                )
+
+                print(
+                    f"[SERVICE] {baggage_tractor.vehicle_id} "
+                    f"APPROACHING | "
+                    f"aircraft={rw215.flight_id}"
+                )
+            else:
+                print(
+                    f"[SERVICE] {baggage_tractor.vehicle_id} "
+                    f"APPROACH BLOCKED | "
+                    f"aircraft={rw215.flight_id} | "
+                    f"reason=unsafe_target"
+                )
+
+        if baggage_tractor.state == GroundVehicleState.APPROACHING:
+            baggage_service_position = (
+                get_baggage_service_position(rw215)
+            )
+
+            baggage_tractor.final_target = (
+                baggage_service_position
+            )
+
+            tractor_arrived = (
+                ground_vehicle_movement.move_toward(
+                    baggage_tractor,
+                    baggage_service_position,
+                    sim_dt,
+                    speed=20.0,
+                )
+            )
+
+            if tractor_arrived:
+                baggage_tractor.position = pygame.Vector2(
+                    baggage_service_position
+                )
+                baggage_tractor.speed = 0.0
+
         baggage_tractor.record_position()
         baggage_tractor.update_carts()
+
+        if (
+            baggage_tractor.state
+            == GroundVehicleState.APPROACHING
+            and baggage_tractor.speed == 0.0
+            and not baggage_parking_blocked
+        ):
+            current_cart_positions = [
+                pygame.Vector2(cart.position)
+                for cart in baggage_tractor.carts
+            ]
+
+            if baggage_settle_reference is None:
+                max_cart_movement = float("inf")
+            else:
+                max_cart_movement = max(
+                    (
+                        current - previous
+                    ).length()
+                    for current, previous in zip(
+                        current_cart_positions,
+                        baggage_settle_reference,
+                    )
+                )
+
+            baggage_settle_reference = current_cart_positions
+
+            if max_cart_movement <= BAGGAGE_SETTLE_EPSILON:
+                baggage_tractor.operation_timer += sim_dt
+            else:
+                baggage_tractor.operation_timer = 0.0
+
+            if (
+                baggage_tractor.operation_timer
+                >= BAGGAGE_SETTLE_DURATION
+            ):
+                if is_baggage_consist_safe(
+                    rw215,
+                    baggage_tractor,
+                ):
+                    baggage_tractor.final_target = None
+                    baggage_tractor.operation_timer = 0.0
+                    baggage_tractor.state = (
+                        GroundVehicleState.CONNECTED
+                    )
+
+                    print(
+                        f"[SERVICE] {baggage_tractor.vehicle_id} "
+                        f"AIRCRAFT ARRIVED | "
+                        f"aircraft={rw215.flight_id}"
+                    )
+                else:
+                    print(
+                        f"[SERVICE] {baggage_tractor.vehicle_id} "
+                        f"PARKING BLOCKED | "
+                        f"aircraft={rw215.flight_id} | "
+                        f"reason=consist_clearance"
+                    )
+                    baggage_parking_blocked = True
 
         ground_traffic_controller.update(
             airport,

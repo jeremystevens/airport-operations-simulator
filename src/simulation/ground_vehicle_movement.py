@@ -35,6 +35,37 @@ def get_fuel_service_position(
     )
 
 
+def get_baggage_service_position(
+    aircraft,
+    tractor_clearance=45.0,
+    longitudinal_offset=65.0,
+):
+    dimensions = get_aircraft_dimensions(aircraft)
+
+    heading_radians = math.radians(aircraft.heading)
+
+    forward = pygame.Vector2(
+        math.sin(heading_radians),
+        -math.cos(heading_radians),
+    )
+
+    right = pygame.Vector2(-forward.y, forward.x)
+
+    lateral_offset = (
+        dimensions["wingspan"] / 2.0 + tractor_clearance
+    )
+
+    # Baggage services from the same side as the fuel truck (matching
+    # BAG_A4's staging side), but aft of the wing toward the cargo-hold
+    # area rather than beside it -- so longitudinal_offset is subtracted
+    # along forward (nose direction) rather than added.
+    return (
+        pygame.Vector2(aircraft.position)
+        - right * lateral_offset
+        - forward * longitudinal_offset
+    )
+
+
 def is_service_position_safe(aircraft, position):
     dimensions = get_aircraft_dimensions(aircraft)
 
@@ -48,6 +79,23 @@ def is_service_position_safe(aircraft, position):
     )
 
     return distance >= minimum_clearance
+
+
+def is_baggage_consist_safe(aircraft, tractor):
+    if not is_service_position_safe(
+        aircraft,
+        tractor.position,
+    ):
+        return False
+
+    for cart in tractor.carts:
+        if not is_service_position_safe(
+            aircraft,
+            cart.position,
+        ):
+            return False
+
+    return True
 
 
 def has_connected_service_vehicle(airport, aircraft_id):
