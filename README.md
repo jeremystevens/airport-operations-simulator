@@ -24,14 +24,15 @@ The simulator currently includes a functional airport with:
 - Takeoff rolls, liftoff, climb, and departure from the simulated world.
 - Ground traffic control that prevents aircraft from trying to use the same narrow taxiway at the same time.
 - Arriving aircraft receiving priority in certain taxiway conflicts while departing aircraft hold safely out of the way.
-- Ground and Tower clearances for operations such as landing, taxiing, holding position, continuing taxi, lining up, and takeoff.
-- Aircraft turnaround operations at the gate.
-- Passenger deboarding, baggage unloading, fueling, catering, boarding, and preparation for another departure.
-- A separate service-road network for airport ground vehicles.
+- Ground and Tower clearances for operations such as landing, taxiing, holding position, continuing taxi, lining up, and takeoff, all issued and validated through a shared controller/command pipeline rather than being applied directly.
+- Aircraft turnaround operations at the gate, including deboarding, baggage unloading, fueling, catering, and boarding as real dependencies an aircraft has to wait on rather than a single fixed timer.
+- A separate service-road network for airport ground vehicles, kept independent from the taxiway network aircraft use.
+- A fully functional fuel truck: it is dispatched from its own depot when an aircraft begins servicing, drives the service-road network, breaks off to approach the aircraft at a position calculated from that aircraft's own size and orientation, connects, actually performs the fueling operation, then disconnects, returns home, and becomes available to service another aircraft.
+- A baggage tractor towing a three-cart consist that dispatches from its own staging area, drives the service-road network with the carts trailing naturally through turns, and stages near the aircraft.
 - Simulation speed controls for speeding up or slowing down airport operations.
 - Camera movement and zoom controls for exploring the airport.
 
-Ground-service vehicles are now being developed so that services such as fueling, baggage handling, and catering will be performed by vehicles that actually travel around the airport instead of simply happening in the background.
+The first ground-service vehicle, the fuel truck, now performs its entire job for real: an aircraft's fuel requirement is only satisfied once the truck has physically reached it and finished fueling, and boarding cannot begin without that. Baggage handling is following the same path — the tractor and its carts can already reach the aircraft, with the physical baggage operation itself coming next.
 
 ## Current Airport
 
@@ -78,7 +79,7 @@ The simulator is also being designed so that airport controllers can eventually 
 
 There is a lot more planned for the project, including:
 
-- Functional fuel trucks, baggage tractors, catering trucks, buses, maintenance vehicles, and emergency vehicles.
+- Baggage tractors that actually load and unload baggage at the aircraft, plus functional catering trucks, buses, maintenance vehicles, and emergency vehicles.
 - Passenger, baggage, and cargo movement.
 - Cargo terminals and cargo-only aircraft operations.
 - More aircraft types, including regional aircraft, widebodies, private aircraft, cargo aircraft, and very large aircraft.
@@ -105,7 +106,7 @@ Airport Operations Simulator is under active development.
 
 Right now development is focused on **aircraft turnaround and ground-service vehicles**. Aircraft can already complete arrivals, taxi to dynamically assigned gates, go through their turnaround process, and departing traffic can operate at the same time.
 
-The next major step is making ground-service vehicles physically perform the jobs that are currently simulated during an aircraft turnaround.
+Ground-service vehicles are being migrated one at a time from simulated timers to actually performing their jobs. The fuel truck was the first to make this transition and now handles its entire task for real, from dispatch through fueling to returning home. The baggage tractor and its cart consist are partway through the same migration — they can already dispatch and drive to the aircraft, and giving them the same real ownership of the baggage task that the fuel truck has for fueling is the next step, followed by catering.
 
 Expect things to change frequently while the simulation systems are being built.
 
