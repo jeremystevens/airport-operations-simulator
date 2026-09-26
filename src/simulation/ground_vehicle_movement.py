@@ -2,6 +2,33 @@ import math
 
 import pygame
 
+from src.vehicles.ground_vehicle import GroundVehicleState
+
+
+def dispatch_ground_vehicle(
+    vehicle,
+    aircraft,
+    route,
+    destination,
+):
+    if vehicle.state != GroundVehicleState.PARKED:
+        return False
+
+    if not route:
+        return False
+
+    vehicle.assign_aircraft(aircraft)
+
+    vehicle.assign_route(
+        route,
+        final_target=destination,
+    )
+
+    vehicle.state = GroundVehicleState.DISPATCHED
+    vehicle.active = True
+
+    return True
+
 
 class GroundVehicleMovementController:
     def __init__(

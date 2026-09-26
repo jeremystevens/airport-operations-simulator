@@ -29,6 +29,7 @@ from src.simulation.command_executor import (
 )
 from src.simulation.ground_vehicle_movement import (
     GroundVehicleMovementController,
+    dispatch_ground_vehicle,
 )
 from src.simulation.pathfinding import find_taxiway_path
 from src.simulation.pushback import PushbackController
@@ -389,6 +390,15 @@ def main():
 
     airport.add_ground_vehicle(tug_01)
 
+    fuel_truck = GroundVehicle(
+        vehicle_id="FUEL-01",
+        vehicle_type=GroundVehicleType.FUEL_TRUCK,
+        position=(-1050, 1325),
+        heading=90,
+    )
+
+    airport.add_ground_vehicle(fuel_truck)
+
     rw901 = Aircraft(
         flight_id="RW901",
         aircraft_type="Aero 350",
@@ -697,6 +707,38 @@ def main():
         )
     )
 
+    fuel_home_node = ServiceNode(
+        "FUEL_HOME",
+        (-1050, 1325),
+    )
+
+    fuel_a4_node = ServiceNode(
+        "FUEL_A4",
+        (1000, 1200),
+    )
+
+    for node in (
+        fuel_home_node,
+        fuel_a4_node,
+    ):
+        airport.add_service_node(node)
+
+    airport.add_service_segment(
+        ServiceSegment(
+            "FUEL_HOME_TO_WEST",
+            fuel_home_node,
+            service_west,
+        )
+    )
+
+    airport.add_service_segment(
+        ServiceSegment(
+            "FUEL_A4_SPUR",
+            service_a4,
+            fuel_a4_node,
+        )
+    )
+
     dispatch_route = find_service_path(
         airport,
         "TUG_A1_HOME",
@@ -867,6 +909,26 @@ def main():
                     )
 
                     tug_01.active = False
+
+        if fuel_truck.state == GroundVehicleState.DISPATCHED:
+            if fuel_truck.has_route:
+                fuel_route_complete = (
+                    ground_vehicle_movement.update_route(
+                        fuel_truck,
+                        airport,
+                        sim_dt,
+                    )
+                )
+
+                if fuel_route_complete:
+                    fuel_truck.speed = 0.0
+
+                    print(
+                        f"[SERVICE] {fuel_truck.vehicle_id} "
+                        f"ARRIVED | "
+                        f"aircraft={fuel_truck.assigned_aircraft_id} | "
+                        f"destination=FUEL_A4"
+                    )
 
         ground_traffic_controller.update(
             airport,
@@ -1245,6 +1307,26 @@ def main():
                 f"[TURNAROUND] {rw215.flight_id} "
                 f"SERVICING STARTED"
             )
+
+            fuel_route = find_service_path(
+                airport,
+                "FUEL_HOME",
+                "FUEL_A4",
+            )
+
+            if dispatch_ground_vehicle(
+                fuel_truck,
+                rw215,
+                fuel_route,
+                "FUEL_A4",
+            ):
+                print(
+                    f"[SERVICE] {fuel_truck.vehicle_id} "
+                    f"DISPATCHED | "
+                    f"aircraft={rw215.flight_id} | "
+                    f"service=fuel | "
+                    f"destination=FUEL_A4"
+                )
 
         elif turnaround_event == "boarding":
             print(

@@ -15,6 +15,9 @@ class GroundVehicleRenderer:
     TOWBAR = (190, 190, 175)
     TOWBAR_JOINT = (235, 190, 45)
 
+    FUEL_TANK = (195, 45, 40)
+    FUEL_CAB = (225, 130, 125)
+
     def draw(
         self,
         screen,
@@ -26,6 +29,16 @@ class GroundVehicleRenderer:
             == GroundVehicleType.PUSHBACK_TUG
         ):
             self._draw_tug(
+                screen,
+                camera,
+                vehicle,
+            )
+
+        elif (
+            vehicle.vehicle_type
+            == GroundVehicleType.FUEL_TRUCK
+        ):
+            self._draw_fuel_truck(
                 screen,
                 camera,
                 vehicle,
@@ -165,6 +178,109 @@ class GroundVehicleRenderer:
                 pygame.Rect(
                     x,
                     int(length * 0.65),
+                    wheel_width,
+                    wheel_height,
+                ),
+            )
+
+        rotated = pygame.transform.rotate(
+            surface,
+            -vehicle.heading,
+        )
+
+        position = camera.world_to_screen(
+            vehicle.position
+        )
+
+        destination = rotated.get_rect(
+            center=(
+                int(position.x),
+                int(position.y),
+            )
+        )
+
+        screen.blit(
+            rotated,
+            destination,
+        )
+
+    def _draw_fuel_truck(
+        self,
+        screen,
+        camera,
+        vehicle,
+    ):
+        width = max(
+            4,
+            int(50 * camera.zoom),
+        )
+
+        length = max(
+            8,
+            int(110 * camera.zoom),
+        )
+
+        surface = pygame.Surface(
+            (width + 12, length + 12),
+            pygame.SRCALPHA,
+        )
+
+        cab_length = max(
+            3,
+            int(length * 0.22),
+        )
+
+        pygame.draw.rect(
+            surface,
+            self.FUEL_CAB,
+            pygame.Rect(
+                6,
+                6,
+                width,
+                cab_length,
+            ),
+            border_radius=max(
+                1,
+                int(4 * camera.zoom),
+            ),
+        )
+
+        pygame.draw.rect(
+            surface,
+            self.FUEL_TANK,
+            pygame.Rect(
+                6,
+                6 + cab_length,
+                width,
+                length - cab_length,
+            ),
+            border_radius=max(
+                1,
+                int(6 * camera.zoom),
+            ),
+        )
+
+        wheel_width = max(2, int(6 * camera.zoom))
+        wheel_height = max(3, int(14 * camera.zoom))
+
+        for x in (2, width + 6):
+            pygame.draw.rect(
+                surface,
+                self.TIRE,
+                pygame.Rect(
+                    x,
+                    int(length * 0.15),
+                    wheel_width,
+                    wheel_height,
+                ),
+            )
+
+            pygame.draw.rect(
+                surface,
+                self.TIRE,
+                pygame.Rect(
+                    x,
+                    int(length * 0.75),
                     wheel_width,
                     wheel_height,
                 ),

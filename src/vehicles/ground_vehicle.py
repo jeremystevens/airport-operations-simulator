@@ -52,9 +52,10 @@ class GroundVehicle:
     def clear_assignment(self):
         self.assigned_aircraft_id = None
 
-    def assign_route(self, route):
+    def assign_route(self, route, final_target=None):
         self.route = list(route)
         self.route_index = 0
+        self.final_target = final_target
 
     def clear_route(self):
         self.route = []
