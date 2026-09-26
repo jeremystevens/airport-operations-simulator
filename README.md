@@ -1,50 +1,173 @@
 # Airport Operations Simulator
 
-A top-down airport operations simulation built with Python and Pygame.
+Airport Operations Simulator is a work-in-progress airport simulation game built in Python with Pygame.
 
-The project aims to simulate a living airport where aircraft arrive, land,
-taxi, park at gates or cargo stands, receive ground services, push back,
-depart, and contribute to persistent airport statistics.
+The goal is to create a living airport where aircraft arrive, land, taxi to their gates, receive ground services, load passengers and cargo, push back, taxi to the runway, and depart again — while the airport continues operating around them.
 
-## Current Status
+Rather than scripting aircraft along predetermined animations, the project is being built around an actual simulation. Aircraft have destinations and states, taxi routes are calculated through the airport, gates can become occupied, runways can be busy, and controllers make decisions about how traffic should move.
 
-Early development — Phase 0: Project Foundation.
+The project is still early in development, but the airport is already starting to come alive.
 
-Currently implemented:
+## What Works So Far
 
-- Pygame application foundation
-- 1280x720 simulation window
-- 60 FPS game loop
-- Clean application shutdown
+The simulator currently includes a functional airport with:
+
+- A runway with markings, thresholds, taxiway connections, and runway occupancy.
+- A taxiway network with route finding.
+- A terminal, apron, gates, and jet bridges.
+- Different aircraft sizes and recognizable top-down aircraft graphics.
+- Arriving and departing aircraft operating at the same time.
+- Aircraft approaches, landings, rollout, and runway exits.
+- Taxiing between runways and gates.
+- Automatic gate assignment based on availability and aircraft size.
+- Pushback operations with a working pushback tug.
+- Takeoff rolls, liftoff, climb, and departure from the simulated world.
+- Ground traffic control that prevents aircraft from trying to use the same narrow taxiway at the same time.
+- Arriving aircraft receiving priority in certain taxiway conflicts while departing aircraft hold safely out of the way.
+- Ground and Tower clearances for operations such as landing, taxiing, holding position, continuing taxi, lining up, and takeoff.
+- Aircraft turnaround operations at the gate.
+- Passenger deboarding, baggage unloading, fueling, catering, boarding, and preparation for another departure.
+- A separate service-road network for airport ground vehicles.
+- Simulation speed controls for speeding up or slowing down airport operations.
+- Camera movement and zoom controls for exploring the airport.
+
+Ground-service vehicles are now being developed so that services such as fueling, baggage handling, and catering will be performed by vehicles that actually travel around the airport instead of simply happening in the background.
+
+## Current Airport
+
+Development currently takes place at **Redwood International Airport (RWI)**, our test airport.
+
+RWI gives us a controlled airport where new systems can be built and tested before we start generating larger and more complicated airports.
+
+The long-term plan is not to have just one airport. Airport Operations Simulator is being designed to eventually support airports of different sizes and layouts, including small regional airports, international airports, cargo facilities, multi-runway airports, and much larger hubs.
+
+Procedurally generated airports using seeds are also planned so that a particular airport layout can be recreated later.
+
+## A Living Airport
+
+One of the main goals of the project is to make the airport feel like a place that continues operating whether you are watching a particular aircraft or not.
+
+Eventually an aircraft should be able to complete a full cycle:
+
+**Approach → Landing → Taxi → Gate → Unload → Service → Board → Pushback → Taxi → Takeoff → Departure**
+
+At the same time, other aircraft may be landing, waiting for a runway, taxiing in the opposite direction, receiving ground services, or preparing for departure.
+
+Ground vehicles will also have their own jobs and routes instead of existing only as decoration.
+
+## Air Traffic Control
+
+Airport Operations Simulator is being designed with separate Ground and Tower operations.
+
+Controllers can issue instructions such as:
+
+- Cleared to land
+- Taxi to gate
+- Hold position
+- Continue taxi
+- Line up and wait
+- Cleared for takeoff
+
+Aircraft still have to obey the physical rules of the simulation. A clearance does not allow an aircraft to drive through another airplane or use an occupied runway.
+
+In the future, these same events are planned to produce spoken pilot and controller radio traffic using text-to-speech.
+
+The simulator is also being designed so that airport controllers can eventually be controlled in different ways. The normal simulator will always be able to operate the airport itself, while future options may allow an AI controller or even the player to take over certain positions.
 
 ## Planned Features
 
-- Multiple airport layouts and sizes
-- Passenger and cargo aircraft
-- Functional gates and cargo stands
-- Aircraft taxi routing
-- Ground service vehicles
-- Passenger, baggage, and cargo simulation
-- Airport operations HUD and dashboard
-- Persistent airport data using SQLite
-- Seeded procedural airport generation
-- Dynamic weather and time of day
-- ATC and pilot text-to-speech radio communications
-- Rule-based and eventual AI airport controllers
-- Optional remote web dashboard for monitoring a running airport
+There is a lot more planned for the project, including:
 
-## Technology
+- Functional fuel trucks, baggage tractors, catering trucks, buses, maintenance vehicles, and emergency vehicles.
+- Passenger, baggage, and cargo movement.
+- Cargo terminals and cargo-only aircraft operations.
+- More aircraft types, including regional aircraft, widebodies, private aircraft, cargo aircraft, and very large aircraft.
+- Multiple terminals and much larger airports.
+- Multiple and intersecting runways.
+- Weather, wind, day/night operations, and airport lighting.
+- More detailed Ground and Tower control.
+- Pilot and controller radio voices.
+- Airport statistics, flight boards, passenger totals, cargo totals, delays, and graphs.
+- Saved airports and airport history.
+- A title screen for selecting, creating, and continuing airports.
+- Seed-based airport generation.
+- Different airport sizes and styles.
+- Surrounding terrain, roads, neighborhoods, water, forests, and other scenery.
+- Aircraft approaching and departing through the surrounding world.
+- A remote web dashboard for watching airport operations from another device.
+- Optional AI-controlled airport operations.
 
-- Python
-- Pygame
-- SQLite (planned)
+The long-term goal is for airports to become busy systems where aircraft, passengers, cargo, vehicles, gates, runways, and controllers all affect one another.
 
-## Running
+## Development Status
 
-Create and activate a Python virtual environment, install the dependencies,
-then run:
+Airport Operations Simulator is under active development.
+
+Right now development is focused on **aircraft turnaround and ground-service vehicles**. Aircraft can already complete arrivals, taxi to dynamically assigned gates, go through their turnaround process, and departing traffic can operate at the same time.
+
+The next major step is making ground-service vehicles physically perform the jobs that are currently simulated during an aircraft turnaround.
+
+Expect things to change frequently while the simulation systems are being built.
+
+## Running the Project
+
+Python and Pygame are required.
+
+Clone the repository:
+
+```bash
+git clone https://github.com/jeremystevens/airport-operations-simulator.git
+cd airport-operations-simulator
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install the requirements:
 
 ```bash
 pip install -r requirements.txt
-python main.py
+```
 
+Run the simulator:
+
+```bash
+python main.py
+```
+
+## Controls
+
+Current development controls include:
+
+- **WASD / Arrow Keys** — Move the camera
+- **Mouse Wheel** — Zoom in and out
+- **[** — Slow down the simulation
+- **]** — Speed up the simulation
+
+Additional controls and user interface features will be added as development continues.
+
+## Why I'm Building It
+
+I've always liked simulations where you can watch lots of independent systems interact with each other.
+
+Airports are especially interesting because even something as simple as getting one airplane from a runway to a gate involves runways, taxiways, gates, controllers, vehicles, passengers, timing, and other aircraft.
+
+This project is an attempt to build that kind of airport from the ground up and see how far the simulation can go.
+
+It's a learning project, an experiment, and hopefully eventually a pretty fun airport to watch.
+
+## Contributing
+
+The project is still changing quickly, so the internal code and structure are likely to continue evolving.
+
+Contributions, ideas, bug reports, and suggestions are welcome.
+
+A more detailed developer guide covering the simulator's architecture and technical systems is planned as the project becomes more established.
+
+## License
+
+A license has not been selected yet.
